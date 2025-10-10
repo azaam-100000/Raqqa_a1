@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { Conversation, Profile } from '../types';
+import { Conversation, Profile, Message } from '../types';
 import Spinner from '../components/ui/Spinner';
 import ConversationCard from '../components/ConversationCard';
 
@@ -15,15 +15,17 @@ const MessagesScreen: React.FC = () => {
         if (!user) return;
 
         const fetchConversations = async () => {
-            setLoading(true);
+            // Set loading to true only on initial fetch
+            // FIX: Removed erroneous and redundant state updates.
+            // The original code had a typo `setLoading(prev => prev.length === 0)` which causes a crash.
+            // The intended behavior of only showing a loader on initial fetch is already handled by `useState(true)`
+            // and the `finally` block, so these lines are not needed.
             setError(null);
             
             try {
-                // This has been refactored to be more robust.
-                // 1. Fetch all messages involving the user
                 const { data: messagesData, error: messagesError } = await supabase
                     .from('messages')
-                    .select('*')
+                    .select('id, created_at, sender_id, receiver_id, content, image_url, audio_url, read')
                     .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
                     .order('created_at', { ascending: false });
 
@@ -35,28 +37,25 @@ const MessagesScreen: React.FC = () => {
                     return;
                 }
                 
-                // 2. Collect unique other user IDs
                 const otherUserIds = new Set<string>();
                 messagesData.forEach(msg => {
                     if (msg.sender_id !== user.id) otherUserIds.add(msg.sender_id);
                     if (msg.receiver_id !== user.id) otherUserIds.add(msg.receiver_id);
                 });
 
-                // 3. Fetch profiles for those users
                 const { data: profilesData, error: profilesError } = await supabase
                     .from('profiles')
-                    .select('*')
+                    .select('id, full_name, avatar_url')
                     .in('id', Array.from(otherUserIds));
 
                 if (profilesError) throw profilesError;
 
-                const profilesMap = new Map<string, Profile>();
-                profilesData.forEach(p => profilesMap.set(p.id, p));
-
-                // 4. Group messages into conversations
+                const profilesMap = new Map<string, Profile>((profilesData || []).map(p => [p.id, p as Profile]));
+                
                 const conversationMap = new Map<string, Conversation>();
-                for (const message of messagesData) {
+                for (const message of messagesData as Message[]) {
                     const otherUserId = message.sender_id === user.id ? message.receiver_id : message.sender_id;
+                    
                     if (!conversationMap.has(otherUserId)) {
                         const profile = profilesMap.get(otherUserId);
                         if (profile) {
@@ -64,11 +63,26 @@ const MessagesScreen: React.FC = () => {
                                 other_user_id: otherUserId,
                                 profile: profile,
                                 last_message: message,
+                                unread_count: 0,
                             });
                         }
                     }
+                    
+                    if (message.receiver_id === user.id && !message.read) {
+                        const conv = conversationMap.get(otherUserId);
+                        if (conv) {
+                            conv.unread_count += 1;
+                        }
+                    }
                 }
-                setConversations(Array.from(conversationMap.values()));
+                
+                const sortedConversations = Array.from(conversationMap.values()).sort((a, b) => {
+                    if (a.unread_count > 0 && b.unread_count === 0) return -1;
+                    if (b.unread_count > 0 && a.unread_count === 0) return 1;
+                    return new Date(b.last_message.created_at).getTime() - new Date(a.last_message.created_at).getTime();
+                });
+                
+                setConversations(sortedConversations);
 
             } catch (err: any) {
                  console.error("Error fetching conversations:", err);
@@ -80,17 +94,21 @@ const MessagesScreen: React.FC = () => {
 
         fetchConversations();
         
-        // Subscribe to new messages to update the conversation list
-        const subscription = supabase
-            .channel(`public:messages:user=eq.${user.id}`)
+        const channel = supabase
+            .channel(`messages-screen-${user.id}`)
             .on('postgres_changes', 
-                { event: 'INSERT', schema: 'public', table: 'messages', filter: `or(sender_id.eq.${user.id},receiver_id.eq.${user.id})` },
+                { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'messages',
+                    filter: `or(sender_id.eq.${user.id},receiver_id.eq.${user.id})`
+                },
                 () => fetchConversations()
             )
             .subscribe();
             
         return () => {
-            supabase.removeChannel(subscription);
+            supabase.removeChannel(channel);
         }
 
     }, [user]);
@@ -106,7 +124,7 @@ const MessagesScreen: React.FC = () => {
             return <p className="text-center text-slate-400 py-10">ليس لديك رسائل حتى الآن. ابدأ محادثة من صفحة متجر.</p>;
         }
         return (
-            <div className="divide-y divide-slate-700">
+            <div className="space-y-2">
                 {conversations.map(conv => (
                     <ConversationCard key={conv.other_user_id} conversation={conv} />
                 ))}

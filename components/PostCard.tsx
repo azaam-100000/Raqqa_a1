@@ -8,6 +8,7 @@ import { supabase } from '../services/supabase';
 import { Link } from 'react-router-dom';
 import Textarea from './ui/Textarea';
 import Button from './ui/Button';
+import { getErrorMessage, playLikeSound, triggerHapticFeedback } from '../utils/errors';
 
 // Simple time ago function
 const timeAgo = (dateString: string) => {
@@ -47,8 +48,8 @@ const HeartIcon = ({ filled }: { filled: boolean }) => (
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={`h-6 w-6 transition-colors duration-200 ${
-        filled ? 'text-red-500' : 'text-slate-400 group-hover:text-red-400'
+      className={`h-6 w-6 transform transition-all duration-300 ease-out group-hover:scale-125 ${
+        filled ? 'text-red-500 scale-110' : 'text-slate-400'
       }`}
     >
       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
@@ -73,7 +74,7 @@ const CommentIcon = () => (
   );
 
 const MoreIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
 );
 
 interface PostCardProps {
@@ -92,10 +93,13 @@ const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted, onPostUpdated 
     const [updateLoading, setUpdateLoading] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
     const [postImageUrl, setPostImageUrl] = useState<string | null>(null);
+    const [confirmingDelete, setConfirmingDelete] = useState(false);
+    const deleteTimeoutRef = useRef<number | null>(null);
 
     const menuRef = useRef<HTMLDivElement>(null);
     const commentCount = post.comments[0]?.count || 0;
     const isOwner = user?.id === post.user_id;
+    const isAdmin = user?.email === 'azaamazeez8877@gmail.com';
 
     const CONTENT_LIMIT = 250;
     const isLongPost = post.content.length > CONTENT_LIMIT;
@@ -120,6 +124,17 @@ const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted, onPostUpdated 
     }, []);
 
     useEffect(() => {
+        // Reset confirmation state when menu closes
+        if (!isMenuOpen) {
+            setConfirmingDelete(false);
+            if (deleteTimeoutRef.current) {
+                clearTimeout(deleteTimeoutRef.current);
+                deleteTimeoutRef.current = null;
+            }
+        }
+    }, [isMenuOpen]);
+
+    useEffect(() => {
         if (user) {
             const liked = post.likes.some(like => like.user_id === user.id);
             setIsLiked(liked);
@@ -134,6 +149,9 @@ const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted, onPostUpdated 
             alert('يجب عليك تسجيل الدخول أولاً لتتمكن من الإعجاب بالمنشورات.');
             return;
         }
+
+        playLikeSound();
+        triggerHapticFeedback();
 
         const currentlyLiked = isLiked;
         setIsLiked(!currentlyLiked);
@@ -168,34 +186,68 @@ const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted, onPostUpdated 
     };
 
     const handleDelete = async () => {
+        if (deleteTimeoutRef.current) {
+            clearTimeout(deleteTimeoutRef.current);
+            deleteTimeoutRef.current = null;
+        }
+
+        if (!confirmingDelete) {
+            setConfirmingDelete(true);
+            deleteTimeoutRef.current = window.setTimeout(() => {
+                setConfirmingDelete(false);
+                deleteTimeoutRef.current = null;
+            }, 3000); // Reset after 3 seconds
+            return;
+        }
+
         setIsMenuOpen(false);
-        if (window.confirm('هل أنت متأكد من أنك تريد حذف هذا المنشور؟ لا يمكن التراجع عن هذا الإجراء.')) {
-            const { error } = await supabase.from('posts').delete().eq('id', post.id);
-            if (error) {
-                console.error('Error deleting post:', error);
-                alert(`فشل حذف المنشور: ${error.message}`);
-            } else {
-                onPostDeleted?.(post.id);
+        setUpdateLoading(true); // Use for delete loading state
+        try {
+            const { count, error: dbError } = await supabase
+                .from('posts')
+                .delete({ count: 'exact' })
+                .eq('id', post.id);
+
+            if (dbError) throw dbError;
+            if (count === 0 || count === null) throw new Error('فشل حذف المنشور. قد لا تملك الصلاحية.');
+
+            if (post.image_url) {
+                const { error: storageError } = await supabase.storage.from('uploads').remove([post.image_url]);
+                if (storageError) console.warn(`Post deleted, but failed to remove image: ${storageError.message}`);
             }
+            
+            onPostDeleted?.(post.id);
+
+        } catch (err: unknown) {
+            alert(`فشل حذف المنشور: ${getErrorMessage(err)}`);
+        } finally {
+            setUpdateLoading(false);
+            setConfirmingDelete(false);
         }
     };
 
     const handleUpdate = async () => {
         if (!editedContent.trim()) return;
         setUpdateLoading(true);
-        const { data, error } = await supabase
+        const { data: updatedPost, error } = await supabase
             .from('posts')
             .update({ content: editedContent.trim() })
             .eq('id', post.id)
-            .select('*, profiles!user_id(full_name, avatar_url), groups!group_id(name), likes(user_id), comments(count)')
+            .select('id, content')
             .single();
         
         setUpdateLoading(false);
         if (error) {
              console.error('Error updating post:', error);
-             alert(`فشل تحديث المنشور: ${error.message}`);
-        } else {
-            onPostUpdated?.(data as any);
+             alert(`فشل تحديث المنشور: ${getErrorMessage(error)}`);
+        } else if (updatedPost) {
+            // Reconstruct the full post object by merging the updated fields
+            // with the existing post data.
+            const fullUpdatedPost: Post = {
+                ...post,
+                ...updatedPost,
+            };
+            onPostUpdated?.(fullUpdatedPost);
             setIsEditing(false);
         }
     };
@@ -209,7 +261,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted, onPostUpdated 
             {post.groups && post.group_id && (
                 <div className="mb-2 text-xs text-slate-400">
                     <Link to={`/group/${post.group_id}`} className="hover:underline flex items-center gap-1.5 font-semibold">
-                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="7" height="5" x="7" y="7" rx="1"/><path d="M17 14v-1a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v1"/><path d="M7 7v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V7"/></svg>
+                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="7" height="5" x="7" y="7" rx="1"/><path d="M17 14v-1a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v1"/><path d="M7 7v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V7"/></svg>
                         <span>{post.groups.name}</span>
                     </Link>
                 </div>
@@ -217,7 +269,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted, onPostUpdated 
             <div className="flex items-start justify-between">
                 <div className="flex items-center mb-3 flex-1">
                     <Link to={`/user/${post.user_id}`} className="ml-3 flex-shrink-0">
-                        <Avatar url={authorAvatarUrl} size={40} />
+                        <Avatar url={authorAvatarUrl} size={40} userId={post.user_id} showStatus={true} />
                     </Link>
                     <div>
                         <Link to={`/user/${post.user_id}`} className="font-bold text-white hover:underline">{authorName}</Link>
@@ -226,15 +278,17 @@ const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted, onPostUpdated 
                         </p>
                     </div>
                 </div>
-                {isOwner && !isEditing && (
+                {(isOwner || isAdmin) && !isEditing && (
                     <div className="relative" ref={menuRef}>
                         <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-full">
                             <MoreIcon />
                         </button>
                         {isMenuOpen && (
-                            <div className="absolute left-0 mt-2 w-32 bg-slate-700 border border-slate-600 rounded-md shadow-lg z-10">
-                                <button onClick={() => { setIsEditing(true); setIsMenuOpen(false); }} className="block w-full text-right px-4 py-2 text-sm text-slate-300 hover:bg-slate-600">تعديل</button>
-                                <button onClick={handleDelete} className="block w-full text-right px-4 py-2 text-sm text-red-400 hover:bg-slate-600">حذف</button>
+                            <div className="absolute left-0 mt-2 w-40 bg-slate-700 border border-slate-600 rounded-md shadow-lg z-10">
+                                {isOwner && <button onClick={() => { setIsEditing(true); setIsMenuOpen(false); setConfirmingDelete(false); }} className="block w-full text-right px-4 py-2 text-sm text-slate-300 hover:bg-slate-600">تعديل</button>}
+                                <button onClick={handleDelete} disabled={updateLoading} className={`block w-full text-right px-4 py-2 text-sm hover:bg-slate-600 transition-colors ${confirmingDelete ? 'bg-red-700 text-white' : 'text-red-400'}`}>
+                                    {updateLoading ? 'جاري الحذف...' : confirmingDelete ? 'تأكيد الحذف؟' : 'حذف'}
+                                </button>
                             </div>
                         )}
                     </div>
@@ -304,7 +358,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted, onPostUpdated 
                 <div className="flex items-center gap-1">
                     <button 
                       onClick={handleLikeToggle} 
-                      className="flex items-center gap-2 group p-1 rounded-md -ml-1 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-800"
+                      className="flex items-center gap-2 group p-1 rounded-md -ml-1 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 focus:ring-offset-slate-800 transform transition-transform active:scale-125"
                       aria-label={isLiked ? 'إلغاء الإعجاب' : 'إعجاب'}
                       disabled={isEditing}
                     >

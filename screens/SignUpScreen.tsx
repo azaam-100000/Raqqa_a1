@@ -5,6 +5,7 @@ import AuthLayout from './AuthLayout';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import Select from '../components/ui/Select';
+import { getErrorMessage } from '../utils/errors';
 
 
 const SignUpScreen: React.FC = () => {
@@ -42,10 +43,11 @@ const SignUpScreen: React.FC = () => {
     const { error: signUpError } = await signUpWithPassword(email, password, fullName);
     
     if (signUpError) {
-      if (signUpError.message.includes('User already registered')) {
+      const message = getErrorMessage(signUpError);
+      if (message.includes('User already registered')) {
         setError('هذا الحساب مسجل بالفعل.');
       } else {
-        setError(signUpError.message);
+        setError(message);
       }
       setLoading(false);
       return;

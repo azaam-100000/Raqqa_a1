@@ -3,14 +3,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
-import { Post, Comment, Like } from '../types';
+import { Post, Comment, Like, Profile } from '../types';
 import Spinner from '../components/ui/Spinner';
 import PostCard from '../components/PostCard';
 import CommentCard from '../components/CommentCard';
 import CreateCommentForm from '../components/CreateCommentForm';
+import { getErrorMessage } from '../utils/errors';
 
 const BackIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
 );
 
 const PostDetailScreen: React.FC = () => {
@@ -21,145 +22,107 @@ const PostDetailScreen: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
+    const fetchInitialData = useCallback(async () => {
         if (!postId) return;
-        
         setLoading(true);
         setError(null);
+        try {
+            // Step 1: Fetch base post
+            const { data: postData, error: postError } = await supabase
+                .from('posts')
+                .select('id, content, image_url, created_at, user_id, group_id')
+                .eq('id', postId)
+                .single();
+            if (postError) throw postError;
 
-        const fetchInitialData = async () => {
-             try {
-                // Fetch post
-                const { data: postData, error: postError } = await supabase
-                    .from('posts')
-                    .select('*, profiles!user_id(full_name, avatar_url), groups!group_id(name), likes(user_id), comments(count)')
-                    .eq('id', postId)
-                    .single();
+            // Step 2: Fetch related post data + comments in parallel
+            const [
+                profileResult,
+                likesResult,
+                commentsResult
+            ] = await Promise.all([
+                supabase.from('profiles').select('full_name, avatar_url').eq('id', postData.user_id).single(),
+                supabase.from('likes').select('user_id').eq('post_id', postId),
+                supabase.from('comments').select('id, content, created_at, user_id, post_id').eq('post_id', postId).order('created_at', { ascending: true })
+            ]);
 
-                if (postError) {
-                    if (postError.code === 'PGRST116') { // Post not found
-                         throw new Error('لم يتم العثور على المنشور.');
-                    }
-                    throw new Error('فشل في تحميل المنشور.');
-                }
-                setPost(postData as any);
+            const { data: profileData, error: profileError } = profileResult;
+            if (profileError) console.warn('Could not fetch post author profile', profileError.message);
+            if (likesResult.error) throw likesResult.error;
+            if (commentsResult.error) throw commentsResult.error;
+            
+            // Step 3: Augment post data
+            setPost({
+                ...postData,
+                profiles: profileData || null,
+                likes: likesResult.data || [],
+                comments: [{ count: commentsResult.data?.length || 0 }]
+            } as Post);
 
-                // Fetch comments
-                const { data: commentsData, error: commentsError } = await supabase
-                    .from('comments')
-                    .select('*, profiles!user_id(full_name, avatar_url)')
-                    .eq('post_id', postId)
-                    .order('created_at', { ascending: true });
+            // Step 4: Augment comments data
+            const commentsData = commentsResult.data;
+            if (commentsData && commentsData.length > 0) {
+                const commentUserIds = [...new Set(commentsData.map(c => c.user_id))];
+                const { data: commentProfiles, error: commentProfilesError } = await supabase
+                    .from('profiles')
+                    .select('id, full_name, avatar_url')
+                    .in('id', commentUserIds);
+                if (commentProfilesError) throw commentProfilesError;
 
-                if (commentsError) {
-                    throw new Error('فشل في تحميل التعليقات.');
-                }
-                setComments(commentsData as any[]);
-
-            } catch (err: any) {
-                console.error(err);
-                setError(err.message);
-            } finally {
-                setLoading(false);
+                const profilesMap = new Map((commentProfiles || []).map(p => [p.id, p]));
+                const augmentedComments = commentsData.map(comment => ({
+                    ...comment,
+                    profiles: profilesMap.get(comment.user_id) || null
+                }));
+                setComments(augmentedComments as any[]);
+            } else {
+                setComments([]);
             }
-        };
-        
-        fetchInitialData();
-
-        // Subscription for comments
-        const commentsSubscription = supabase
-            .channel(`public:comments:post_id=eq.${postId}`)
-            .on<Comment>(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'comments', filter: `post_id=eq.${postId}` },
-                async (payload) => {
-                    if (payload.eventType === 'INSERT') {
-                        const { data: newComment, error } = await supabase
-                            .from('comments')
-                            .select('*, profiles!user_id(full_name, avatar_url)')
-                            .eq('id', payload.new.id)
-                            .single();
-                        if (!error && newComment) {
-                            setComments(current => {
-                                if (current.some(c => c.id === newComment.id)) return current;
-                                return [...current, newComment as any].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-                            });
-                        }
-                    } else if (payload.eventType === 'UPDATE') {
-                        const { data: updatedComment, error } = await supabase
-                            .from('comments')
-                            .select('*, profiles!user_id(full_name, avatar_url)')
-                            .eq('id', payload.new.id)
-                            .single();
-                        if (!error && updatedComment) {
-                            handleCommentUpdated(updatedComment as any);
-                        }
-                    } else if (payload.eventType === 'DELETE') {
-                        const deletedCommentId = payload.old.id;
-                        if (deletedCommentId) {
-                            handleCommentDeleted(deletedCommentId as string);
-                        }
-                    }
-                }
-            )
-            .subscribe();
-
-        const likesSubscription = supabase
-          .channel(`public:likes:post_id=eq.${postId}`)
-          .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'likes', filter: `post_id=eq.${postId}`},
-            (payload) => {
-              setPost(currentPost => {
-                if (!currentPost) return null;
-                let newLikes: Like[];
-                if (payload.eventType === 'INSERT') {
-                  const newLike = payload.new as {user_id: string};
-                  if (currentPost.likes.some(l => l.user_id === newLike.user_id)) return currentPost;
-                  newLikes = [...currentPost.likes, { user_id: newLike.user_id }];
-                } else if (payload.eventType === 'DELETE') {
-                  const oldLike = payload.old as {user_id: string};
-                  newLikes = currentPost.likes.filter(l => l.user_id !== oldLike.user_id);
-                } else {
-                  return currentPost;
-                }
-                return { ...currentPost, likes: newLikes };
-              });
-            }
-          ).subscribe();
-          
-        const postSubscription = supabase
-            .channel(`public:posts:id=eq.${postId}`)
-            .on<Post>(
-                'postgres_changes',
-                { event: 'UPDATE', schema: 'public', table: 'posts', filter: `id=eq.${postId}` },
-                (payload) => {
-                    setPost(currentPost => currentPost ? {...currentPost, ...payload.new} as Post : null)
-                }
-            )
-            .on<Post>(
-                 'postgres_changes',
-                 { event: 'DELETE', schema: 'public', table: 'posts', filter: `id=eq.${postId}` },
-                 () => {
-                    handlePostDeleted();
-                 }
-            )
-            .subscribe();
-
-
-        return () => {
-            supabase.removeChannel(commentsSubscription);
-            supabase.removeChannel(likesSubscription);
-            supabase.removeChannel(postSubscription);
-        };
+        } catch (err: unknown) {
+            console.error(err);
+            const message = getErrorMessage(err);
+            if (message.includes('PGRST116')) setError('لم يتم العثور على المنشور.');
+            else setError(message);
+        } finally {
+            setLoading(false);
+        }
     }, [postId]);
 
-    const handlePostDeleted = () => {
+
+    useEffect(() => {
+        if(!postId) return;
+
+        fetchInitialData();
+        
+        const channel = supabase.channel(`post-details-${postId}`);
+        
+        const subscriptions = channel
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'comments', filter: `post_id=eq.${postId}` }, () => fetchInitialData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'likes', filter: `post_id=eq.${postId}`}, () => fetchInitialData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'posts', filter: `id=eq.${postId}` }, (payload) => {
+                if (payload.eventType === 'DELETE') {
+                    navigate('/home', { replace: true });
+                } else {
+                    fetchInitialData();
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [postId, fetchInitialData, navigate]);
+
+    const handlePostDeleted = useCallback(() => {
         navigate('/home', { replace: true });
-    };
+    }, [navigate]);
 
     const handlePostUpdated = (updatedPost: Post) => {
         setPost(currentPost => currentPost ? {...currentPost, ...updatedPost} : updatedPost);
+    };
+
+    const handleCommentCreated = (newComment: Comment) => {
+        setComments(current => [...current, newComment]);
     };
 
     const handleCommentDeleted = (commentId: string) => {
@@ -167,7 +130,7 @@ const PostDetailScreen: React.FC = () => {
     };
 
     const handleCommentUpdated = (updatedComment: Comment) => {
-        setComments(current => current.map(c => c.id === updatedComment.id ? updatedComment : c));
+        setComments(current => current.map(c => c.id === updatedComment.id ? { ...c, content: updatedComment.content } : c));
     };
 
     return (
@@ -197,7 +160,11 @@ const PostDetailScreen: React.FC = () => {
                 />
                 <div className="mt-6">
                     <h2 className="text-lg font-bold mb-4">التعليقات</h2>
-                    <CreateCommentForm postId={post.id} postOwnerId={post.user_id} />
+                    <CreateCommentForm 
+                        postId={post.id} 
+                        postOwnerId={post.user_id}
+                        onCommentCreated={handleCommentCreated}
+                    />
                     <div className="space-y-4 mt-4">
                         {comments.length > 0 ? (
                             comments.map(comment => (

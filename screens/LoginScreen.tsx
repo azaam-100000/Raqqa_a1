@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import AuthLayout from './AuthLayout';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
+import { getErrorMessage } from '../utils/errors';
 
 const GoogleIcon = () => (
     <svg className="h-5 w-5 mr-3" viewBox="0 0 48 48">
@@ -39,11 +40,16 @@ const LoginScreen: React.FC = () => {
 
     const { error } = await signInWithPassword(email, password);
     if (error) {
-      if (error.message === 'Invalid login credentials') {
+      const message = getErrorMessage(error);
+      if (message.includes('Invalid login credentials')) {
         setError('البريد الإلكتروني أو كلمة المرور غير صحيحة, أو أن الحساب لم يتم تفعيله بعد.');
         setShowResend(true);
-      } else {
-        setError(error.message);
+      } else if (message.includes('Email not confirmed')) {
+        setError('الرجاء تفعيل حسابك أولاً. تم إرسال بريد إلكتروني يحتوي على رابط التفعيل.');
+        setShowResend(true);
+      }
+      else {
+        setError(message);
       }
     } else {
       navigate('/home');
@@ -56,7 +62,7 @@ const LoginScreen: React.FC = () => {
     setError(null);
     const { error } = await signInWithOAuth('google');
     if (error) {
-      setError(error.message);
+      setError(getErrorMessage(error));
     }
     // Supabase handles the redirect
     setLoading(false);
@@ -73,7 +79,7 @@ const LoginScreen: React.FC = () => {
     const { error } = await resendConfirmationEmail(email);
     setLoading(false);
     if (error) {
-        setResendMessage(`فشل الإرسال: ${error.message}`);
+        setResendMessage(`فشل الإرسال: ${getErrorMessage(error)}`);
     } else {
         navigate('/verify', { state: { email } });
     }

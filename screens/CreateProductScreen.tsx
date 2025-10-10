@@ -7,6 +7,7 @@ import Input from '../components/ui/Input';
 import Textarea from '../components/ui/Textarea';
 import Button from '../components/ui/Button';
 import ImageInput from '../components/ui/ImageInput';
+import { getErrorMessage } from '../utils/errors';
 
 const BackIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
@@ -57,15 +58,9 @@ const CreateProductScreen: React.FC = () => {
             // 3. Navigate back to the store page
             navigate(`/store/${storeId}`);
 
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Error creating product:", err);
-            let friendlyMessage = `فشل إنشاء المنتج: ${err.message}`;
-            if (err.message.includes('products" violates row-level security policy')) {
-                friendlyMessage = "فشل إنشاء المنتج. تحقق من صلاحيات الوصول (RLS) لجدول 'products'.";
-            } else if (err.message.includes('relation "products" does not exist')) {
-                 friendlyMessage = "فشل إنشاء المنتج. يبدو أن جدول 'products' غير موجود في قاعدة البيانات.";
-            }
-            setError(friendlyMessage);
+            setError(getErrorMessage(err));
         } finally {
             setLoading(false);
         }

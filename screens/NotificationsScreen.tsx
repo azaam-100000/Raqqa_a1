@@ -5,52 +5,79 @@ import { useAuth } from '../hooks/useAuth';
 import { Notification } from '../types';
 import Spinner from '../components/ui/Spinner';
 import NotificationCard from '../components/NotificationCard';
-import { Link } from 'react-router-dom';
-
 
 const NotificationsScreen: React.FC = () => {
     const { user } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
+    const [clearing, setClearing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const fetchAndMarkRead = async () => {
+        if (!user) return;
+        setLoading(true);
+        setError(null);
+
+        try {
+            // 1. Fetch base notifications
+            const { data: notificationsData, error: notificationsError } = await supabase
+                .from('notifications')
+                .select('id, created_at, user_id, actor_id, type, entity_id, read')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false });
+
+            if (notificationsError) throw notificationsError;
+            
+            if (!notificationsData || notificationsData.length === 0) {
+                setNotifications([]);
+                setLoading(false);
+                return;
+            }
+
+            // 2. Collect actor IDs
+            const actorIds = [...new Set(notificationsData.map(n => n.actor_id))];
+
+            // 3. Fetch actor profiles
+            const { data: profilesData, error: profilesError } = await supabase
+                .from('profiles')
+                .select('id, full_name, avatar_url')
+                .in('id', actorIds);
+            
+            if (profilesError) throw profilesError;
+            
+            // 4. Join data on client
+            const profilesMap = new Map((profilesData || []).map(p => [p.id, p]));
+            const augmentedNotifications = notificationsData.map(n => ({
+                ...n,
+                actors: profilesMap.get(n.actor_id) || null
+            }));
+
+            setNotifications(augmentedNotifications as any[]);
+            
+            // 5. Mark as read after fetching
+            await supabase
+                .from('notifications')
+                .update({ read: true })
+                .eq('user_id', user.id)
+                .eq('read', false);
+
+        } catch (err: any) {
+            console.error("Error fetching notifications:", err);
+            setError("فشل في تحميل الإشعارات.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
         if (!user) return;
-
-        const fetchAndMarkRead = async () => {
-            setLoading(true);
-            setError(null);
-
-            const { data, error } = await supabase
-                .from('notifications')
-                .select('*, actors:profiles!actor_id(*)')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false });
-            
-            if (error) {
-                console.error("Error fetching notifications:", error);
-                setError("فشل في تحميل الإشعارات.");
-            } else {
-                setNotifications(data as any[]);
-                // Mark as read after fetching
-                await supabase
-                    .from('notifications')
-                    .update({ read: true })
-                    .eq('user_id', user.id)
-                    .eq('read', false);
-            }
-            setLoading(false);
-        };
-
         fetchAndMarkRead();
         
         const subscription = supabase
             .channel(`public:notifications:user_id=eq.${user.id}`)
             .on('postgres_changes', 
-                { event: 'INSERT', schema: 'public', table: 'notifications' },
-                (payload) => {
-                     // We could fetch the full new notification, or just prepend the basic one
-                     // For simplicity, we'll just refetch all
+                { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+                () => {
                      fetchAndMarkRead();
                 }
             )
@@ -60,6 +87,21 @@ const NotificationsScreen: React.FC = () => {
             supabase.removeChannel(subscription);
         }
     }, [user]);
+
+    const handleClearAll = async () => {
+        if (!user || clearing) return;
+        if (window.confirm('هل أنت متأكد من أنك تريد مسح جميع الإشعارات؟ لا يمكن التراجع عن هذا الإجراء.')) {
+            setClearing(true);
+            const { error } = await supabase.from('notifications').delete().eq('user_id', user.id);
+            if (error) {
+                setError('فشل في مسح الإشعارات.');
+                console.error('Error clearing notifications:', error);
+            } else {
+                setNotifications([]);
+            }
+            setClearing(false);
+        }
+    };
     
     const renderContent = () => {
         if (loading) {
@@ -71,7 +113,7 @@ const NotificationsScreen: React.FC = () => {
         if (notifications.length === 0) {
             return (
                  <div className="text-center text-slate-400 py-10">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-12 w-12 mx-auto mb-4"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-12 w-12 mx-auto mb-4"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                     <p>لا توجد إشعارات جديدة.</p>
                     <p className="text-sm">عندما يتفاعل الآخرون معك، ستظهر الإشعارات هنا.</p>
                 </div>
@@ -90,8 +132,17 @@ const NotificationsScreen: React.FC = () => {
         <div className="min-h-screen bg-slate-900 text-white">
             <header className="bg-slate-800/80 backdrop-blur-sm sticky top-0 z-10 border-b border-slate-700">
                 <div className="container mx-auto px-4">
-                    <div className="flex items-center h-16">
+                    <div className="flex justify-between items-center h-16">
                         <h1 className="text-xl font-bold">الإشعارات</h1>
+                        {notifications.length > 0 && !loading && (
+                            <button 
+                                onClick={handleClearAll} 
+                                disabled={clearing}
+                                className="text-sm font-semibold text-cyan-400 hover:text-cyan-500 disabled:opacity-50"
+                            >
+                                {clearing ? 'جاري المسح...' : 'مسح الكل'}
+                            </button>
+                        )}
                     </div>
                 </div>
             </header>

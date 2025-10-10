@@ -1,21 +1,20 @@
 
-
 import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import Textarea from './ui/Textarea';
 import Button from './ui/Button';
 import Avatar from './ui/Avatar';
-import { Comment } from '../types';
+import { RentalPostComment } from '../types';
 import { getErrorMessage } from '../utils/errors';
 
-interface CreateCommentFormProps {
+interface CreateRentalCommentFormProps {
   postId: string;
   postOwnerId: string;
-  onCommentCreated: (newComment: Comment) => void;
+  onCommentCreated: (newComment: RentalPostComment) => void;
 }
 
-const CreateCommentForm: React.FC<CreateCommentFormProps> = ({ postId, postOwnerId, onCommentCreated }) => {
+const CreateRentalCommentForm: React.FC<CreateRentalCommentFormProps> = ({ postId, postOwnerId, onCommentCreated }) => {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,39 +27,38 @@ const CreateCommentForm: React.FC<CreateCommentFormProps> = ({ postId, postOwner
     setLoading(true);
     setError(null);
 
-    const { data: insertedComment, error } = await supabase
-      .from('comments')
-      .insert([{ content: content.trim(), user_id: user.id, post_id: postId }])
-      .select('id, content, created_at, user_id, post_id')
-      .single();
+    try {
+        const { data: insertedComment, error: insertError } = await supabase
+          .from('rental_post_comments')
+          .insert([{ content: content.trim(), user_id: user.id, post_id: postId }])
+          .select('id, content, created_at, user_id, post_id')
+          .single();
 
-
-    if (error) {
-      setLoading(false);
-      setError(`فشل إضافة التعليق: ${getErrorMessage(error)}`);
-      console.error('Error creating comment:', error);
-    } else {
-      setContent('');
+        if (insertError) throw insertError;
+        
+        setContent('');
       
-      const newFullComment = {
-        ...insertedComment,
-        profiles: {
-            full_name: profile?.full_name || null,
-            avatar_url: profile?.avatar_url || null,
-        }
-      };
-      onCommentCreated(newFullComment as any);
+        const newFullComment = {
+            ...insertedComment,
+            profiles: {
+                full_name: profile?.full_name || null,
+                avatar_url: profile?.avatar_url || null,
+            }
+        };
+        onCommentCreated(newFullComment as any);
 
-      // Send notification if not commenting on own post
-      if (user.id !== postOwnerId) {
-        await supabase.from('notifications').insert({
-            user_id: postOwnerId, // Recipient
-            actor_id: user.id,     // Sender
-            type: 'comment_post',
-            entity_id: postId,
-        });
-      }
-      setLoading(false);
+        if (user.id !== postOwnerId) {
+            await supabase.from('notifications').insert({
+                user_id: postOwnerId,
+                actor_id: user.id,
+                type: 'comment_rental_post',
+                entity_id: postId,
+            });
+        }
+    } catch (err) {
+        setError(`فشل إضافة التعليق: ${getErrorMessage(err)}`);
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -93,4 +91,4 @@ const CreateCommentForm: React.FC<CreateCommentFormProps> = ({ postId, postOwner
   );
 };
 
-export default CreateCommentForm;
+export default CreateRentalCommentForm;

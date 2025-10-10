@@ -1,8 +1,15 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../services/supabase';
-import { Session, User } from '@supabase/supabase-js';
+import { Session, User, RealtimeChannel } from '@supabase/supabase-js';
 import type { Provider } from '@supabase/supabase-js';
 import { Profile } from '../types';
+
+export interface PresenceState {
+  [key: string]: {
+    presence_ref: string;
+    online_at: string;
+  }[];
+}
 
 interface AuthContextType {
   user: User | null;
@@ -16,6 +23,7 @@ interface AuthContextType {
   resendConfirmationEmail: (email: string) => Promise<any>;
   signOut: () => void;
   refreshProfile: () => Promise<void>;
+  isOnline: (userId: string) => boolean;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,12 +33,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [onlineUsers, setOnlineUsers] = useState<PresenceState>({});
+
+  const checkProfileStatus = (profileToCheck: Profile): Profile | null => {
+    if (profileToCheck.status === 'banned') {
+      supabase.auth.signOut();
+      alert('تم حظر هذا الحساب.');
+      return null;
+    }
+    if (profileToCheck.status === 'suspended') {
+      supabase.auth.signOut();
+      alert('تم تعليق هذا الحساب مؤقتاً.');
+      return null;
+    }
+    return profileToCheck;
+  };
 
   const getOrCreateProfile = async (authUser: User): Promise<Profile | null> => {
     // 1. Try to fetch the profile
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, full_name, avatar_url, bio, status')
       .eq('id', authUser.id)
       .maybeSingle();
 
@@ -40,7 +63,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     if (data) {
-      return data;
+      return checkProfileStatus(data);
     }
     
     // 2. If no profile, create one.
@@ -51,7 +74,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'مستخدم جديد',
         avatar_url: authUser.user_metadata?.avatar_url,
       })
-      .select()
+      .select('id, full_name, avatar_url, bio, status')
       .single();
     
     if (insertError) {
@@ -59,7 +82,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return null;
     }
 
-    return newProfile;
+    return checkProfileStatus(newProfile);
   };
 
   useEffect(() => {
@@ -95,11 +118,54 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, []);
   
+  // Presence tracking useEffect
+  useEffect(() => {
+    let presenceChannel: RealtimeChannel | null = null;
+    if (user) {
+        presenceChannel = supabase.channel('online-users', {
+            config: {
+                presence: { key: user.id },
+            },
+        });
+
+        presenceChannel
+          .on('presence', { event: 'sync' }, () => {
+              const newState = presenceChannel!.presenceState();
+              setOnlineUsers(newState as PresenceState);
+          })
+          .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+              setOnlineUsers(prev => ({
+                  ...prev,
+                  [key]: newPresences,
+              }));
+          })
+          .on('presence', { event: 'leave' }, ({ key }) => {
+              setOnlineUsers(prev => {
+                  const newState = { ...prev };
+                  delete newState[key];
+                  return newState;
+              });
+          });
+
+        presenceChannel.subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+                await presenceChannel!.track({ online_at: new Date().toISOString() });
+            }
+        });
+    }
+
+    return () => {
+        if (presenceChannel) {
+            supabase.removeChannel(presenceChannel);
+        }
+    };
+  }, [user]);
+  
   const refreshProfile = async () => {
     if (user) {
         const { data, error } = await supabase
           .from('profiles')
-          .select('*')
+          .select('id, full_name, avatar_url, bio, status')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -147,6 +213,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await supabase.auth.signOut();
   };
 
+  const isOnline = (userId: string) => !!onlineUsers[userId];
+
   const value = {
     session,
     user,
@@ -159,6 +227,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     resendConfirmationEmail,
     signOut,
     refreshProfile,
+    isOnline,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

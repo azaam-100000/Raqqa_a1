@@ -1,13 +1,14 @@
 
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Post } from '../types';
-import Avatar from './ui/Avatar';
-import { useAuth } from '../hooks/useAuth';
-import { supabase } from '../services/supabase';
+import { Post } from './types';
+import Avatar from './components/ui/Avatar';
+import { useAuth } from './hooks/useAuth';
+import { supabase } from './services/supabase';
 import { Link } from 'react-router-dom';
-import Textarea from './ui/Textarea';
-import Button from './ui/Button';
+import Textarea from './components/ui/Textarea';
+import Button from './components/ui/Button';
+import { getErrorMessage } from './utils/errors';
 
 // Simple time ago function
 const timeAgo = (dateString: string) => {
@@ -73,7 +74,7 @@ const CommentIcon = () => (
   );
 
 const MoreIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
 );
 
 interface PostCardProps {
@@ -173,7 +174,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted, onPostUpdated 
             const { error } = await supabase.from('posts').delete().eq('id', post.id);
             if (error) {
                 console.error('Error deleting post:', error);
-                alert(`فشل حذف المنشور: ${error.message}`);
+                alert(`فشل حذف المنشور: ${getErrorMessage(error)}`);
             } else {
                 onPostDeleted?.(post.id);
             }
@@ -183,19 +184,23 @@ const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted, onPostUpdated 
     const handleUpdate = async () => {
         if (!editedContent.trim()) return;
         setUpdateLoading(true);
-        const { data, error } = await supabase
+        const { data: updatedPost, error } = await supabase
             .from('posts')
             .update({ content: editedContent.trim() })
             .eq('id', post.id)
-            .select('*, profiles!user_id(full_name, avatar_url), groups!group_id(name), likes(user_id), comments(count)')
+            .select('id, content')
             .single();
         
         setUpdateLoading(false);
         if (error) {
              console.error('Error updating post:', error);
-             alert(`فشل تحديث المنشور: ${error.message}`);
-        } else {
-            onPostUpdated?.(data as any);
+             alert(`فشل تحديث المنشور: ${getErrorMessage(error)}`);
+        } else if (updatedPost) {
+            const fullUpdatedPost: Post = {
+                ...post,
+                ...updatedPost,
+            };
+            onPostUpdated?.(fullUpdatedPost);
             setIsEditing(false);
         }
     };
@@ -209,7 +214,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted, onPostUpdated 
             {post.groups && post.group_id && (
                 <div className="mb-2 text-xs text-slate-400">
                     <Link to={`/group/${post.group_id}`} className="hover:underline flex items-center gap-1.5 font-semibold">
-                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="7" height="5" x="7" y="7" rx="1"/><path d="M17 14v-1a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v1"/><path d="M7 7v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V7"/></svg>
+                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="7" height="5" x="7" y="7" rx="1"/><path d="M17 14v-1a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v1"/><path d="M7 7v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V7"/></svg>
                         <span>{post.groups.name}</span>
                     </Link>
                 </div>

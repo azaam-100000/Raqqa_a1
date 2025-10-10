@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI, LiveSession, LiveServerMessage, Modality, Blob } from "@google/genai";
 
@@ -66,12 +67,14 @@ export const useLiveConversation = () => {
     });
 
     useEffect(() => {
-        // Initialize AI client
-        if (process.env.API_KEY) {
-            aiRef.current = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        // Safely check for API key to prevent crashes when process.env is not defined.
+        const apiKey = typeof process !== 'undefined' && process.env ? process.env.API_KEY : null;
+
+        if (apiKey) {
+            aiRef.current = new GoogleGenAI({ apiKey: apiKey });
         } else {
-            console.error("API_KEY environment variable not set!");
-            setError("لم يتم تعيين مفتاح الواجهة البرمجية (API Key).");
+            console.error("Gemini API key not found or process.env is not defined.");
+            setError("ميزة المساعد الصوتي معطلة لعدم توفر مفتاح الواجهة البرمجية (API Key).");
         }
         
         return () => {
@@ -133,7 +136,7 @@ export const useLiveConversation = () => {
 
     const startConversation = async () => {
         if (!aiRef.current) {
-            setError("الذكاء الاصطناعي غير مهيأ.");
+            setError("الذكاء الاصطناعي غير مهيأ. تأكد من توفر مفتاح الواجهة البرمجية.");
             return;
         }
         if (isListening) return;
@@ -147,9 +150,7 @@ export const useLiveConversation = () => {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaStreamRef.current = stream;
 
-            // Fix: Cast window to `any` to allow access to `webkitAudioContext` for older browser compatibility, resolving TypeScript error.
             const inputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-            // Fix: Cast window to `any` to allow access to `webkitAudioContext` for older browser compatibility, resolving TypeScript error.
             const outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
             audioContextRef.current = { input: inputAudioContext, output: outputAudioContext };
 

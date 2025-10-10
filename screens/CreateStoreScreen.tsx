@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
@@ -6,14 +7,17 @@ import { useAuth } from '../hooks/useAuth';
 import Input from '../components/ui/Input';
 import Textarea from '../components/ui/Textarea';
 import Button from '../components/ui/Button';
+import ImageInput from '../components/ui/ImageInput';
+import { getErrorMessage } from '../utils/errors';
 
 const BackIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
 );
 
 const CreateStoreScreen: React.FC = () => {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
+    const [imageFile, setImageFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const { user } = useAuth();
@@ -21,24 +25,49 @@ const CreateStoreScreen: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name.trim() || !user) return;
+        if (!name.trim() || !user || !imageFile) {
+            if(!imageFile) setError("الرجاء إضافة صورة للمتجر.");
+            return;
+        }
 
         setLoading(true);
         setError(null);
 
-        const { data, error } = await supabase
-            .from('stores')
-            .insert([{ name: name.trim(), description: description.trim(), user_id: user.id }])
-            .select()
-            .single();
+        try {
+            // 1. Upload image to storage
+            const fileExt = imageFile.name.split('.').pop();
+            const fileName = `${user.id}/stores/${Date.now()}.${fileExt}`;
+            const { error: uploadError } = await supabase.storage
+                .from('uploads')
+                .upload(fileName, imageFile);
+            
+            if (uploadError) throw uploadError;
 
-        setLoading(false);
+            // 2. Insert store data with image_url
+            const { data, error: insertError } = await supabase
+                .from('stores')
+                .insert([{ 
+                    name: name.trim(), 
+                    description: description.trim(), 
+                    user_id: user.id,
+                    image_url: fileName 
+                }])
+                .select('id')
+                .single();
+            
+            if (insertError) {
+                throw insertError;
+            }
 
-        if (error) {
-            setError(`فشل إنشاء المتجر: ${error.message}`);
+            if (data) {
+                navigate(`/store/${data.id}`);
+            }
+
+        } catch (error: unknown) {
             console.error('Error creating store:', error);
-        } else {
-            navigate(`/store/${data.id}`);
+            setError(`فشل إنشاء المتجر: ${getErrorMessage(error)}`);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -57,6 +86,7 @@ const CreateStoreScreen: React.FC = () => {
             <main className="container mx-auto px-4 py-6">
                 <div className="max-w-2xl mx-auto">
                     <form onSubmit={handleSubmit} className="bg-slate-800 border border-slate-700 rounded-lg p-6 space-y-4">
+                        <ImageInput onFileSelect={setImageFile} />
                         <div>
                             <label htmlFor="store-name" className="block text-sm font-medium text-slate-300 mb-2">اسم المتجر</label>
                             <Input
@@ -83,7 +113,7 @@ const CreateStoreScreen: React.FC = () => {
                         {error && <p className="text-red-400 text-sm text-right">{error}</p>}
                         <div className="flex justify-end pt-2">
                             <div className="w-full sm:w-auto">
-                                <Button type="submit" loading={loading} disabled={!name.trim()}>
+                                <Button type="submit" loading={loading} disabled={!name.trim() || !imageFile}>
                                     إنشاء المتجر
                                 </Button>
                             </div>

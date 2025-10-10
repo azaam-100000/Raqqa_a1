@@ -1,44 +1,44 @@
 
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
-import { Post, Like } from '../types';
+import { Post, Product, RentalPost } from '../types';
 import CreatePostForm from '../components/CreatePostForm';
 import PostCard from '../components/PostCard';
+import ProductPostCard from '../components/ProductPostCard';
+import RentalPostCard from '../components/RentalPostCard';
 import Spinner from '../components/ui/Spinner';
 import Avatar from '../components/ui/Avatar';
-import Input from '../components/ui/Input';
+import { getErrorMessage } from '../utils/errors';
 
-const SearchIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 pointer-events-none"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-);
+type FeedItem = (Post & { item_type: 'post' }) | (Product & { item_type: 'product' }) | (RentalPost & { item_type: 'rental' });
+
 
 const MessengerIcon = () => (
-    <svg fill="currentColor" viewBox="0 0 24 24" width="24" height="24">
+    <svg fill="currentColor" viewBox="0 0 24" width="24" height="24">
         <path d="M12 2C6.477 2 2 6.477 2 12c0 3.233 1.522 6.113 3.92 8.016l-1.186 2.373a.5.5 0 00.666.666l2.373-1.186A9.953 9.953 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm1.235 12.923L9.5 12.5l-3.235 1.618L8.5 10.5 4.765 8.882 14.5 4.5l-2.265 8.423z"></path>
     </svg>
 );
 
 const NotificationsIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
     </svg>
 );
 
 const LogoutIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
     </svg>
 );
 
 const HomeScreen: React.FC = () => {
   const { user, profile, signOut } = useAuth();
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -78,138 +78,132 @@ const HomeScreen: React.FC = () => {
 
   }, [user]);
 
-  const fetchPosts = useCallback(async () => {
+  const fetchFeedItems = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: fetchError } = await supabase
-        .from('posts')
-        .select('*, profiles!user_id(full_name, avatar_url), groups!group_id(name), likes(user_id), comments(count)')
-        .order('created_at', { ascending: false });
+        // Step 1: Fetch base posts, products, and rentals
+        const [postsRes, productsRes, rentalsRes] = await Promise.all([
+            supabase.from('posts').select('id, content, image_url, created_at, user_id, group_id').order('created_at', { ascending: false }),
+            supabase.from('products').select('id, name, description, price, created_at, image_url, user_id, store_id').order('created_at', { ascending: false }),
+            supabase.from('rental_posts').select('id, created_at, user_id, region, room_count, image_urls, rent_amount, payment_term').order('created_at', { ascending: false })
+        ]);
 
-      if (fetchError) {
-        throw fetchError;
-      }
+        if (postsRes.error) throw postsRes.error;
+        if (productsRes.error) throw productsRes.error;
+        if (rentalsRes.error) throw rentalsRes.error;
 
-      setPosts(data as any[]);
-    } catch (error: any) {
-      console.error("Error fetching posts:", error.message || error);
-      let friendlyMessage = 'لا يمكن تحميل المنشورات. يرجى المحاولة مرة أخرى.';
-      if (error && error.message) {
-        if (error.message.includes('relation "profiles" does not exist')) {
-            friendlyMessage = 'يبدو أن جدول "profiles" غير موجود. يرجى التأكد من إنشائه في قاعدة بيانات Supabase.';
-        } else if (error.message.includes('relation "posts" does not exist')) {
-            friendlyMessage = 'يبدو أن جدول "posts" غير موجود. يرجى التأكد من إنشائه.';
-        } else if (error.message.includes('relation "comments" does not exist')) {
-            friendlyMessage = 'يبدو أن جدول "comments" غير موجود. يرجى التأكد من إنشائه.';
-        } else if (error.message.includes('violates row-level security policy')) {
-            friendlyMessage = 'تم رفض الوصول. يرجى التحقق من صلاحيات الوصول (RLS policies) لجداول "posts" و "profiles" و "comments" والسماح بعمليات القراءة للمستخدمين المسجلين.';
-        } else {
-             friendlyMessage = `خطأ في تحميل المنشورات: ${error.message}`;
+        const postsData = postsRes.data || [];
+        const productsData = productsRes.data || [];
+        const rentalsData = rentalsRes.data || [];
+
+        if (postsData.length === 0 && productsData.length === 0 && rentalsData.length === 0) {
+            setFeedItems([]); setLoading(false); return;
         }
-      }
-      
-      setError(friendlyMessage);
+
+        // Step 2: Collect all unique IDs for related data
+        const postIds = postsData.map(p => p.id);
+        const productIds = productsData.map(p => p.id);
+        const rentalIds = rentalsData.map(r => r.id);
+
+        const allUserIds = [...new Set([...postsData.map(p => p.user_id), ...productsData.map(p => p.user_id), ...rentalsData.map(r => r.user_id)])];
+        const allGroupIds = [...new Set(postsData.map(p => p.group_id).filter(Boolean))];
+        const allStoreIds = [...new Set(productsData.map(p => p.store_id))];
+        
+        // Step 3: Fetch all related data in parallel
+        const [
+            profilesRes, groupsRes, storesRes, likesRes, commentsRes,
+            productLikesRes, productCommentsRes, rentalLikesRes, rentalCommentsRes
+        ] = await Promise.all([
+            allUserIds.length > 0 ? supabase.from('profiles').select('id, full_name, avatar_url').in('id', allUserIds) : Promise.resolve({ data: [] }),
+            allGroupIds.length > 0 ? supabase.from('groups').select('id, name').in('id', allGroupIds) : Promise.resolve({ data: [] }),
+            allStoreIds.length > 0 ? supabase.from('stores').select('id, name').in('id', allStoreIds) : Promise.resolve({ data: [] }),
+            postIds.length > 0 ? supabase.from('likes').select('post_id, user_id').in('post_id', postIds) : Promise.resolve({ data: [] }),
+            postIds.length > 0 ? supabase.from('comments').select('post_id, id').in('post_id', postIds) : Promise.resolve({ data: [] }),
+            productIds.length > 0 ? supabase.from('product_likes').select('product_id, user_id').in('product_id', productIds) : Promise.resolve({ data: [] }),
+            productIds.length > 0 ? supabase.from('product_comments').select('product_id, id').in('product_id', productIds) : Promise.resolve({ data: [] }),
+            rentalIds.length > 0 ? supabase.from('rental_post_likes').select('post_id, user_id').in('post_id', rentalIds) : Promise.resolve({ data: [] }),
+            rentalIds.length > 0 ? supabase.from('rental_post_comments').select('post_id, id').in('post_id', rentalIds) : Promise.resolve({ data: [] })
+        ]);
+        
+        // Step 4: Create lookup maps for efficient joining
+        const profilesMap = new Map((profilesRes.data || []).map(p => [p.id, p]));
+        const groupsMap = new Map((groupsRes.data || []).map(g => [g.id, g]));
+        const storesMap = new Map((storesRes.data || []).map(s => [s.id, s]));
+        
+        const createLikesMap = (data: any[], key: string) => (data || []).reduce((map, item) => {
+            if (!map.has(item[key])) map.set(item[key], []);
+            map.get(item[key])!.push({ user_id: item.user_id });
+            return map;
+        }, new Map());
+        
+        const createCommentsMap = (data: any[], key: string) => (data || []).reduce((map, item) => {
+            map.set(item[key], (map.get(item[key]) || 0) + 1);
+            return map;
+        }, new Map());
+
+        const likesByPost = createLikesMap(likesRes.data, 'post_id');
+        const commentsByPost = createCommentsMap(commentsRes.data, 'post_id');
+        const likesByProduct = createLikesMap(productLikesRes.data, 'product_id');
+        const commentsByProduct = createCommentsMap(productCommentsRes.data, 'product_id');
+        const likesByRental = createLikesMap(rentalLikesRes.data, 'post_id');
+        const commentsByRental = createCommentsMap(rentalCommentsRes.data, 'post_id');
+
+        // Step 5: Join data on the client side
+        const augmentedPosts = postsData.map((post: any) => ({ ...post, profiles: profilesMap.get(post.user_id) || null, groups: post.group_id ? groupsMap.get(post.group_id) : null, likes: likesByPost.get(post.id) || [], comments: [{ count: commentsByPost.get(post.id) || 0 }] }));
+        const augmentedProducts = productsData.map((product: any) => ({ ...product, profiles: profilesMap.get(product.user_id) || null, stores: storesMap.get(product.store_id) || null, product_likes: likesByProduct.get(product.id) || [], product_comments: [{ count: commentsByProduct.get(product.id) || 0 }] }));
+        const augmentedRentals = rentalsData.map((rental: any) => ({ ...rental, profiles: profilesMap.get(rental.user_id) || null, rental_post_likes: likesByRental.get(rental.id) || [], rental_post_comments: [{ count: commentsByRental.get(rental.id) || 0 }] }));
+        
+        // Step 6: Combine and set state
+        const posts: FeedItem[] = augmentedPosts.map(p => ({ ...p, item_type: 'post' } as FeedItem));
+        const products: FeedItem[] = augmentedProducts.map(p => ({ ...p, item_type: 'product' } as FeedItem));
+        const rentals: FeedItem[] = augmentedRentals.map(r => ({ ...r, item_type: 'rental' } as FeedItem));
+        
+        const combined = [...posts, ...products, ...rentals].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        setFeedItems(combined);
+
+    } catch (error: any) {
+      console.error("Error fetching feed:", error);
+      setError(`فشل تحميل المحتوى: ${getErrorMessage(error)}`);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchPosts();
+    fetchFeedItems();
 
-    const postsSubscription = supabase
-      .channel('public:posts:home')
-      .on<Post>(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'posts' },
-        async (payload) => {
-           if (payload.eventType === 'INSERT') {
-             const { data: newPost, error: fetchNewPostError } = await supabase
-                .from('posts')
-                .select('*, profiles!user_id(full_name, avatar_url), groups!group_id(name), likes(user_id), comments(count)')
-                .eq('id', payload.new.id)
-                .single();
-
-              if (!fetchNewPostError && newPost) {
-                setPosts((currentPosts) => {
-                  if (currentPosts.some(p => p.id === newPost.id)) return currentPosts;
-                  return [newPost as any, ...currentPosts];
-                });
-              }
-           } else if (payload.eventType === 'UPDATE') {
-             const { data: updatedPost, error: fetchUpdatedPostError } = await supabase
-                .from('posts')
-                .select('*, profiles!user_id(full_name, avatar_url), groups!group_id(name), likes(user_id), comments(count)')
-                .eq('id', payload.new.id)
-                .single();
-            
-              if (!fetchUpdatedPostError && updatedPost) {
-                 handlePostUpdated(updatedPost as any);
-              }
-           } else if (payload.eventType === 'DELETE') {
-             const deletedPostId = payload.old.id;
-             if(deletedPostId) {
-                handlePostDeleted(deletedPostId as string);
-             }
-           }
-        }
-      )
+    const subscription = supabase
+      .channel('public:feed_all_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, fetchFeedItems)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, fetchFeedItems)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rental_posts' }, fetchFeedItems)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, fetchFeedItems)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, fetchFeedItems)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_likes' }, fetchFeedItems)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'product_comments' }, fetchFeedItems)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rental_post_likes' }, fetchFeedItems)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rental_post_comments' }, fetchFeedItems)
       .subscribe();
       
-    const likesSubscription = supabase
-      .channel('public:likes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'likes'},
-        (payload) => {
-            if (payload.eventType === 'INSERT') {
-                const newLike = payload.new as Like & { post_id: string };
-                setPosts(currentPosts => currentPosts.map(p => {
-                    if (p.id === newLike.post_id) {
-                        const userHasLiked = p.likes.some(like => like.user_id === newLike.user_id);
-                        if (!userHasLiked) {
-                            return { ...p, likes: [...p.likes, { user_id: newLike.user_id }] };
-                        }
-                    }
-                    return p;
-                }));
-            } else if (payload.eventType === 'DELETE') {
-                const oldLike = payload.old as Like & { post_id: string };
-                setPosts(currentPosts => currentPosts.map(p => {
-                    if (p.id === oldLike.post_id) {
-                        return { ...p, likes: p.likes.filter(like => like.user_id !== oldLike.user_id) };
-                    }
-                    return p;
-                }));
-            }
-        }
-      )
-      .subscribe();
-
     return () => {
-      supabase.removeChannel(postsSubscription);
-      supabase.removeChannel(likesSubscription);
+      supabase.removeChannel(subscription);
     };
-  }, [fetchPosts]);
+  }, [fetchFeedItems]);
 
-  const handlePostDeleted = (postId: string) => {
-    setPosts(currentPosts => currentPosts.filter(p => p.id !== postId));
+  const handleItemDeleted = (id: string, type: 'post' | 'product' | 'rental') => {
+    setFeedItems(currentItems => currentItems.filter(item => !(item.id === id && item.item_type === type)));
   };
 
-  const handlePostUpdated = (updatedPost: Post) => {
-    setPosts(currentPosts => currentPosts.map(p => (p.id === updatedPost.id ? updatedPost : p)));
-  };
-
-  const filteredPosts = useMemo(() => {
-    if (!searchQuery.trim()) {
-        return posts;
-    }
-    return posts.filter(post =>
-        post.content.toLowerCase().includes(searchQuery.toLowerCase())
+  const handleItemUpdated = (updatedItem: Post | Product, type: 'post' | 'product') => { // Rental posts are not editable from the feed
+    setFeedItems(currentItems => 
+      currentItems.map(item => 
+        (item.id === updatedItem.id && item.item_type === type) 
+          ? { ...item, ...updatedItem, item_type: type } as FeedItem
+          : item
+      )
     );
-  }, [posts, searchQuery]);
-
+  };
 
   const renderContent = () => {
     if (loading) {
@@ -224,24 +218,42 @@ const HomeScreen: React.FC = () => {
       return <p className="text-center text-red-400 py-10">{error}</p>;
     }
     
-    if (posts.length === 0 && !searchQuery) {
-      return <p className="text-center text-slate-400 py-10">لا توجد منشورات حتى الآن. كن أول من ينشر!</p>;
-    }
-
-    if (filteredPosts.length === 0 && searchQuery) {
-        return <p className="text-center text-slate-400 py-10">لم يتم العثور على نتائج بحث لـ "{searchQuery}"</p>;
+    if (feedItems.length === 0) {
+      return <p className="text-center text-slate-400 py-10">لا يوجد محتوى حتى الآن. كن أول من ينشر!</p>;
     }
 
     return (
       <div>
-        {filteredPosts.map((post) => (
-          <PostCard 
-            key={post.id} 
-            post={post}
-            onPostDeleted={handlePostDeleted}
-            onPostUpdated={handlePostUpdated}
-           />
-        ))}
+        {feedItems.map((item) => {
+          if (item.item_type === 'post') {
+            return (
+              <PostCard 
+                key={`post-${item.id}`} 
+                post={item}
+                onPostDeleted={(id) => handleItemDeleted(id, 'post')}
+                onPostUpdated={(updatedPost) => handleItemUpdated(updatedPost, 'post')}
+              />
+            );
+          }
+          if (item.item_type === 'product') {
+            return (
+              <ProductPostCard
+                key={`product-${item.id}`}
+                product={item}
+              />
+            );
+          }
+          if (item.item_type === 'rental') {
+            return (
+              <RentalPostCard
+                key={`rental-${item.id}`}
+                post={item}
+                onPostDeleted={(id) => handleItemDeleted(id, 'rental')}
+              />
+            );
+          }
+          return null;
+        })}
       </div>
     );
   };
@@ -252,19 +264,6 @@ const HomeScreen: React.FC = () => {
           <div className="container mx-auto px-4 flex justify-between items-center h-16">
               <div className="flex items-center gap-4">
                   <h1 className="text-2xl font-bold text-cyan-400">سوق محافظة الرقه</h1>
-              </div>
-
-              <div className="flex-1 max-w-xs sm:max-w-md mx-4 hidden sm:block">
-                  <div className="relative">
-                      <Input
-                          type="text"
-                          placeholder="ابحث في سوق محافظة الرقه..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          className="pr-10 w-full !bg-slate-700 !border-slate-600 rounded-full"
-                      />
-                      <SearchIcon />
-                  </div>
               </div>
 
               <div className="flex items-center gap-2">
@@ -282,13 +281,24 @@ const HomeScreen: React.FC = () => {
 
                   <div className="relative" ref={dropdownRef}>
                       <button onClick={() => setIsDropdownOpen(prev => !prev)} className="rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-cyan-500">
-                          <Avatar url={profile?.avatar_url} size={40} />
+                          <Avatar url={profile?.avatar_url} size={40} userId={profile?.id} showStatus={true} />
                       </button>
                       {isDropdownOpen && (
                           <div className="absolute left-0 mt-2 w-72 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-20 p-2">
+                              {user?.email === 'azaamazeez8877@gmail.com' && (
+                               <>
+                                 <Link to="/admin" className="w-full flex items-center gap-3 text-right p-2 hover:bg-slate-700 rounded-md text-cyan-400" onClick={() => setIsDropdownOpen(false)}>
+                                   <div className="h-9 w-9 flex items-center justify-center bg-slate-700 rounded-full">
+                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                   </div>
+                                   <span>لوحة التحكم للمسؤول</span>
+                                 </Link>
+                                 <hr className="border-slate-700 my-2" />
+                               </>
+                             )}
                               <Link to={`/user/${profile?.id}`} className="block p-2 hover:bg-slate-700 rounded-md" onClick={() => setIsDropdownOpen(false)}>
                                   <div className="flex items-center gap-3">
-                                      <Avatar url={profile?.avatar_url} size={48} />
+                                      <Avatar url={profile?.avatar_url} size={48} userId={profile?.id} showStatus={true} />
                                       <div>
                                           <p className="font-bold text-white">{profile?.full_name}</p>
                                           <p className="text-sm text-slate-400">عرض ملفك الشخصي</p>
@@ -309,16 +319,6 @@ const HomeScreen: React.FC = () => {
 
       <main className="container mx-auto px-4 py-6">
         <div className="max-w-2xl mx-auto">
-          <div className="relative mb-6 sm:hidden">
-            <Input
-                type="text"
-                placeholder="ابحث في المنشورات..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pr-10 w-full !bg-slate-700 !border-slate-600 rounded-full"
-            />
-            <SearchIcon />
-          </div>
           <CreatePostForm profile={profile} />
           {renderContent()}
         </div>

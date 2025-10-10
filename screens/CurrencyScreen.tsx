@@ -1,7 +1,6 @@
 
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { GoogleGenAI } from '@google/genai';
 import Spinner from '../components/ui/Spinner';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
@@ -92,11 +91,6 @@ const CurrencyScreen: React.FC = () => {
     const [selectedCity, setSelectedCity] = useState<CityKey>('Damascus');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    
-    const [analysis, setAnalysis] = useState('');
-    const [analysisLoading, setAnalysisLoading] = useState(false);
-    const [analysisError, setAnalysisError] = useState<string | null>(null);
-
 
     useEffect(() => {
         const fetchRates = async () => {
@@ -119,34 +113,6 @@ const CurrencyScreen: React.FC = () => {
 
         fetchRates();
     }, [baseCurrency]);
-
-    const handleAnalysis = async () => {
-        setAnalysisLoading(true);
-        setAnalysis('');
-        setAnalysisError(null);
-        try {
-            if (!process.env.API_KEY) {
-              throw new Error("API key not configured.");
-            }
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-            
-            const cityRates = localMarketRates[selectedCity];
-            const prompt = `بناءً على أسعار الصرف التقريبية التالية في السوق المحلي بمدينة ${cityRates.name}: الدولار الأمريكي يبلغ حوالي ${cityRates.USD_SYP.sell} ليرة سورية، والليرة التركية حوالي ${cityRates.TRY_SYP.sell} ليرة سورية. قدم تحليلاً موجزاً جداً (3-4 جمل) حول وضع الليرة السورية وما يمكن توقعه في المدى القصير. يجب أن يكون التحليل عاماً وغير متخصص وموجهاً لعامة الناس.`;
-
-            const response = await ai.models.generateContent({
-              model: 'gemini-2.5-flash',
-              contents: prompt,
-            });
-            
-            setAnalysis(response.text);
-
-        } catch (err: any) {
-            console.error("Error generating analysis:", err);
-            setAnalysisError('فشل في الحصول على تحليل. يرجى المحاولة مرة أخرى.');
-        } finally {
-            setAnalysisLoading(false);
-        }
-    };
 
     const targetCurrencies = useMemo(() => {
         return Object.keys(currencyNames).filter(c => c !== baseCurrency);
@@ -197,20 +163,6 @@ const CurrencyScreen: React.FC = () => {
                         </div>
                     </div>
                      <p className="text-xs text-slate-500 mt-3 text-center">هذه الأسعار إرشادية وقد تختلف في السوق الفعلي.</p>
-                </div>
-
-                {/* AI Analysis Section */}
-                <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 mb-6">
-                    <h3 className="text-lg font-bold text-cyan-400 mb-3">تحليل الأسعار (تجريبي)</h3>
-                    <Button onClick={handleAnalysis} loading={analysisLoading} className="w-full">
-                        احصل على تحليل للوضع الحالي
-                    </Button>
-                    {analysisError && <p className="text-red-400 text-sm mt-4 text-center">{analysisError}</p>}
-                    {analysis && !analysisLoading && (
-                        <div className="mt-4 pt-4 border-t border-slate-700">
-                            <p className="text-slate-300 whitespace-pre-wrap leading-relaxed">{analysis}</p>
-                        </div>
-                    )}
                 </div>
 
                 {/* International Rates Section */}

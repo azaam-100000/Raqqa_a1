@@ -1,4 +1,5 @@
 
+
 import React, { useState, useRef } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -6,9 +7,10 @@ import Textarea from './ui/Textarea';
 import Button from './ui/Button';
 import { Post, Profile } from '../types';
 import Avatar from './ui/Avatar';
+import { getErrorMessage } from '../utils/errors';
 
 const PhotoIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-green-400">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-green-400">
         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
         <circle cx="8.5" cy="8.5" r="1.5"></circle>
         <polyline points="21 15 16 10 5 21"></polyline>
@@ -16,7 +18,7 @@ const PhotoIcon = () => (
 );
 
 const CloseIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
 );
 
 interface CreatePostFormProps {
@@ -78,29 +80,43 @@ const CreatePostForm: React.FC<CreatePostFormProps> = ({ groupId, onPostCreated,
         imageUrl = fileName;
       }
       
-      const postData: { content: string; user_id: string; group_id?: string | null; image_url?: string | null } = {
+      const postData = {
           content: content.trim(),
           user_id: user.id,
           image_url: imageUrl,
           group_id: groupId || null,
       };
 
-      const { data, error } = await supabase
+      const { data: insertedPost, error: insertError } = await supabase
         .from('posts')
         .insert([postData])
-        .select('*, profiles!user_id(full_name, avatar_url), groups!group_id(name), likes(user_id), comments(count)')
+        .select('id, content, image_url, created_at, user_id, group_id')
         .single();
       
-      if (error) throw error;
+      if (insertError) throw insertError;
+      
+      const { data: groupData, error: groupError } = groupId ? await supabase.from('groups').select('name').eq('id', groupId).single() : { data: null, error: null };
+      if (groupError) console.warn('Could not fetch group name for new post', groupError.message);
+      
+      const newFullPost: Post = {
+        ...insertedPost,
+        profiles: {
+            full_name: profile?.full_name || null,
+            avatar_url: profile?.avatar_url || null,
+        },
+        groups: groupData || null,
+        likes: [],
+        comments: [{ count: 0 }]
+      };
 
       setContent('');
       removeImage();
       setIsFocused(false);
-      if (onPostCreated && data) {
-        onPostCreated(data as any);
+      if (onPostCreated) {
+        onPostCreated(newFullPost);
       }
-    } catch (error: any) {
-      setError(`فشل نشر المنشور: ${error.message}`);
+    } catch (error: unknown) {
+      setError(`فشل نشر المنشور: ${getErrorMessage(error)}`);
       console.error('Error creating post:', error);
     } finally {
       setLoading(false);
@@ -113,7 +129,7 @@ const CreatePostForm: React.FC<CreatePostFormProps> = ({ groupId, onPostCreated,
     <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 mb-6">
       <form onSubmit={handleSubmit}>
         <div className="flex items-start gap-3">
-          <Avatar url={profile?.avatar_url} size={40} />
+          <Avatar url={profile?.avatar_url} size={40} userId={profile?.id} showStatus={true} />
           <Textarea
             rows={isFocused || content || imageFile ? 3 : 1}
             placeholder={groupId ? 'اكتب شيئًا لهذه المجموعة...' : `بماذا تفكر يا ${firstName}؟`}
