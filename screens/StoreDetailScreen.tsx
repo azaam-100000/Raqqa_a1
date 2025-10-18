@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../services/supabase';
@@ -225,7 +223,7 @@ const StoreDetailScreen: React.FC = () => {
     };
 
     const renderProducts = () => {
-        if (products.length === 0) return <div className="text-center text-slate-400 py-10"><p>لا توجد منتجات في هذا المتجر حتى الآن.</p></div>;
+        if (products.length === 0) return <div className="text-center text-gray-500 dark:text-zinc-400 py-10"><p>لا توجد منتجات في هذا المتجر حتى الآن.</p></div>;
         return ( <div className="grid grid-cols-2 sm:grid-cols-3 gap-4"> {products.map(p => <ProductCard key={p.id} product={p} isOwner={isOwner} onProductDeleted={handleProductDeleted}/>)} </div> );
     };
 
@@ -233,13 +231,13 @@ const StoreDetailScreen: React.FC = () => {
     const isAdmin = user?.email === 'azaamazeez8877@gmail.com';
 
     return (
-        <div className="min-h-screen bg-slate-900 text-white">
-            <header className="bg-slate-800/80 backdrop-blur-sm sticky top-0 z-10 border-b border-slate-700">
+        <div className="min-h-screen">
+            <header className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-lg sticky top-0 z-10 border-b border-gray-200 dark:border-zinc-800">
                 <div className="container mx-auto px-4">
                      <div className="flex items-center h-16 relative">
-                        <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-slate-700"> <BackIcon /> </button>
+                        <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800"> <BackIcon /> </button>
                         <h1 className="text-xl font-bold text-center w-full truncate px-12">{loading ? '...' : store?.name || 'تفاصيل المتجر'}</h1>
-                         {(isOwner || isAdmin) && (<div className="absolute left-2" ref={menuRef}><button onClick={() => setIsMenuOpen(p => !p)} className="p-2 rounded-full hover:bg-slate-700"><MoreIcon /></button>{isMenuOpen && (<div className="absolute left-0 mt-2 w-48 bg-slate-700 rounded-md shadow-lg z-10"><button onClick={handleDeleteStore} className={`block w-full text-right px-4 py-2 text-sm hover:bg-slate-600 transition-colors ${confirmingDelete ? 'bg-red-700 text-white' : 'text-red-400'}`}>{confirmingDelete ? 'تأكيد الحذف؟' : 'حذف المتجر'}</button></div>)}</div>)}
+                         {(isOwner || isAdmin) && (<div className="absolute left-2" ref={menuRef}><button onClick={() => setIsMenuOpen(p => !p)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800"><MoreIcon /></button>{isMenuOpen && (<div className="absolute left-0 mt-2 w-48 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-md shadow-lg z-10"><button onClick={handleDeleteStore} className={`block w-full text-right px-4 py-2 text-sm text-red-500 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors ${confirmingDelete ? 'bg-red-600 dark:bg-red-700 text-white' : ''}`}>{confirmingDelete ? 'تأكيد الحذف؟' : 'حذف المتجر'}</button></div>)}</div>)}
                     </div>
                 </div>
             </header>
@@ -249,15 +247,15 @@ const StoreDetailScreen: React.FC = () => {
                      {!loading && error && !store && <p className="text-center text-red-400 py-10">{error}</p>}
                      {store && (
                         <div>
-                            {storeImageUrl && ( <div className="aspect-video w-full bg-slate-700 rounded-lg overflow-hidden mb-6 border border-slate-700"><img src={storeImageUrl} alt={store.name} className="w-full h-full object-cover" /></div> )}
-                            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-6">
+                            {storeImageUrl && ( <div className="aspect-video w-full bg-gray-100 dark:bg-zinc-800 rounded-lg overflow-hidden mb-6 border border-gray-200 dark:border-zinc-700"><img src={storeImageUrl} alt={store.name} className="w-full h-full object-cover" /></div> )}
+                            <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-6 mb-6">
                                 <div className="flex justify-between items-start gap-4">
                                     <div className="flex items-center gap-4">
                                         <Avatar url={store.profiles?.avatar_url} size={56} userId={store.user_id} showStatus={true} />
                                         <div>
                                             <h2 className="text-2xl font-bold">{store.name}</h2>
-                                            <p className="text-slate-400">بواسطة {store.profiles?.full_name}</p>
-                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-slate-400 text-sm mt-2">
+                                            <p className="text-gray-500 dark:text-zinc-400">بواسطة {store.profiles?.full_name}</p>
+                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-500 dark:text-zinc-400 text-sm mt-2">
                                                 <StarRating rating={avgRating} count={ratingCount} />
                                                 <span>•</span>
                                                 <span>{followersCount} متابع</span>
@@ -266,8 +264,8 @@ const StoreDetailScreen: React.FC = () => {
                                     </div>
                                     {isOwner && ( <Link to={`/store/${storeId}/products/new`}><Button variant="secondary" className="!w-auto px-4 !py-2 !text-sm flex-shrink-0">أضف منتجًا</Button></Link> )}
                                 </div>
-                                {store.description && <p className="text-slate-300 mt-4 pt-4 border-t border-slate-700">{store.description}</p>}
-                                <div className="mt-4 pt-4 border-t border-slate-700 space-y-3">
+                                {store.description && <p className="text-gray-700 dark:text-zinc-300 mt-4 pt-4 border-t border-gray-200 dark:border-zinc-800">{store.description}</p>}
+                                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-zinc-800 space-y-3">
                                     {!isOwner && user && store.user_id && (
                                         <div className="space-y-3">
                                             <Button onClick={handleFollowToggle} loading={actionLoading.follow} variant={isFollowing ? 'secondary' : 'primary'}>{isFollowing ? 'إلغاء المتابعة' : 'متابعة'}</Button>

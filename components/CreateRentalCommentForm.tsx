@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -12,9 +13,12 @@ interface CreateRentalCommentFormProps {
   postId: string;
   postOwnerId: string;
   onCommentCreated: (newComment: RentalPostComment) => void;
+  parentCommentId?: string;
+  parentCommentAuthorId?: string;
+  onReplySuccess?: () => void;
 }
 
-const CreateRentalCommentForm: React.FC<CreateRentalCommentFormProps> = ({ postId, postOwnerId, onCommentCreated }) => {
+const CreateRentalCommentForm: React.FC<CreateRentalCommentFormProps> = ({ postId, postOwnerId, onCommentCreated, parentCommentId, parentCommentAuthorId, onReplySuccess }) => {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,8 +34,13 @@ const CreateRentalCommentForm: React.FC<CreateRentalCommentFormProps> = ({ postI
     try {
         const { data: insertedComment, error: insertError } = await supabase
           .from('rental_post_comments')
-          .insert([{ content: content.trim(), user_id: user.id, post_id: postId }])
-          .select('id, content, created_at, user_id, post_id')
+          .insert([{ 
+              content: content.trim(), 
+              user_id: user.id, 
+              post_id: postId,
+              parent_comment_id: parentCommentId || null
+          }])
+          .select('id, content, created_at, user_id, post_id, parent_comment_id')
           .single();
 
         if (insertError) throw insertError;
@@ -55,6 +64,17 @@ const CreateRentalCommentForm: React.FC<CreateRentalCommentFormProps> = ({ postI
                 entity_id: postId,
             });
         }
+        
+        if (parentCommentId && parentCommentAuthorId && user.id !== parentCommentAuthorId) {
+            await supabase.from('notifications').insert({
+                user_id: parentCommentAuthorId,
+                actor_id: user.id,
+                type: 'reply_rental_comment',
+                entity_id: postId,
+            });
+        }
+
+        if (onReplySuccess) onReplySuccess();
     } catch (err) {
         setError(`فشل إضافة التعليق: ${getErrorMessage(err)}`);
     } finally {
@@ -70,18 +90,19 @@ const CreateRentalCommentForm: React.FC<CreateRentalCommentFormProps> = ({ postI
         <div className="flex-1">
           <form onSubmit={handleSubmit}>
             <Textarea
-              rows={2}
-              placeholder="أضف تعليقاً..."
+              rows={parentCommentId ? 1 : 2}
+              placeholder={parentCommentId ? "اكتب رداً..." : "أضف تعليقاً..."}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               disabled={loading}
               required
+              className={parentCommentId ? "!py-2 !text-sm" : ""}
             />
             {error && <p className="text-red-400 text-sm mt-2 text-right">{error}</p>}
             <div className="flex justify-end mt-2">
               <div className="w-full sm:w-auto">
                  <Button type="submit" loading={loading} disabled={!content.trim()} className="!py-2 !text-sm">
-                   تعليق
+                   {parentCommentId ? "رد" : "تعليق"}
                  </Button>
               </div>
             </div>

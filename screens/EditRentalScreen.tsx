@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../services/supabase';
@@ -12,9 +10,9 @@ import { PaymentTerm, RentalPost } from '../types';
 import Spinner from '../components/ui/Spinner';
 
 const BackIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
 );
-const UploadIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-slate-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg> );
+const UploadIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-gray-400 dark:text-zinc-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg> );
 const CloseIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> );
 
 const EditRentalScreen: React.FC = () => {
@@ -127,7 +125,12 @@ const EditRentalScreen: React.FC = () => {
             const newUploadedUrls = await Promise.all(
                 newImageFiles.map(async (file) => {
                     const fileName = `${user.id}/rentals/${Date.now()}-${file.name}`;
-                    const { error } = await supabase.storage.from('uploads').upload(fileName, file);
+                    const { error } = await supabase.storage
+                        .from('uploads')
+                        .upload(fileName, file, {
+                            contentType: file.type,
+                            upsert: true,
+                        });
                     if (error) throw error;
                     return fileName;
                 })
@@ -164,11 +167,11 @@ const EditRentalScreen: React.FC = () => {
     if (error && !post) return <div className="flex h-screen w-full items-center justify-center text-red-400">{error}</div>;
 
     return (
-        <div className="min-h-screen bg-slate-900 text-white">
-            <header className="bg-slate-800/80 backdrop-blur-sm sticky top-0 z-10 border-b border-slate-700">
+        <div className="min-h-screen">
+            <header className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-lg sticky top-0 z-10 border-b border-gray-200 dark:border-zinc-800">
                 <div className="container mx-auto px-4">
                     <div className="flex items-center h-16 relative">
-                        <button onClick={() => navigate(-1)} className="absolute right-0 p-2 rounded-full hover:bg-slate-700">
+                        <button onClick={() => navigate(-1)} className="absolute right-0 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800">
                             <BackIcon />
                         </button>
                         <h1 className="text-xl font-bold text-center w-full">تعديل عرض الإيجار</h1>
@@ -177,28 +180,28 @@ const EditRentalScreen: React.FC = () => {
             </header>
             <main className="container mx-auto px-4 py-6">
                 <div className="max-w-2xl mx-auto">
-                    <form onSubmit={handleSubmit} className="bg-slate-800 border border-slate-700 rounded-lg p-6 space-y-6">
+                    <form onSubmit={handleSubmit} className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-6 space-y-6">
                         {/* Image Editor */}
                         <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">صور المنزل</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-2">صور المنزل</label>
                             <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                                 {existingImageUrls.map((url) => {
                                     const publicUrl = supabase.storage.from('uploads').getPublicUrl(url).data.publicUrl;
                                     return (
                                         <div key={url} className="relative aspect-square w-full rounded-lg overflow-hidden group">
                                             <img src={publicUrl} className="w-full h-full object-cover" />
-                                            <button type="button" onClick={() => removeExistingImage(url)} className="absolute top-1 right-1 bg-slate-900/50 text-white rounded-full p-1.5 hover:bg-red-500"><CloseIcon /></button>
+                                            <button type="button" onClick={() => removeExistingImage(url)} className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1.5 hover:bg-red-500"><CloseIcon /></button>
                                         </div>
                                     );
                                 })}
                                 {newImagePreviews.map((src, index) => (
                                     <div key={index} className="relative aspect-square w-full rounded-lg overflow-hidden group">
                                         <img src={src} className="w-full h-full object-cover" />
-                                        <button type="button" onClick={() => removeNewImage(index)} className="absolute top-1 right-1 bg-slate-900/50 text-white rounded-full p-1.5 hover:bg-red-500"><CloseIcon /></button>
+                                        <button type="button" onClick={() => removeNewImage(index)} className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1.5 hover:bg-red-500"><CloseIcon /></button>
                                     </div>
                                 ))}
-                                <button type="button" onClick={() => fileInputRef.current?.click()} className="aspect-square w-full bg-slate-700/50 border-2 border-dashed border-slate-600 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-cyan-500">
-                                    <UploadIcon /><span className="text-xs text-slate-400 mt-1">إضافة صور</span>
+                                <button type="button" onClick={() => fileInputRef.current?.click()} className="aspect-square w-full bg-gray-100 dark:bg-zinc-800/50 border-2 border-dashed border-gray-300 dark:border-zinc-700 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-teal-500">
+                                    <UploadIcon /><span className="text-xs text-gray-500 dark:text-zinc-400 mt-1">إضافة صور</span>
                                 </button>
                                 <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" multiple />
                             </div>
@@ -214,15 +217,19 @@ const EditRentalScreen: React.FC = () => {
                         </LabeledSelect>
                         <LabeledInput label="أجور البيت للشهر ($)" type="number" value={rentAmount} onChange={e => setRentAmount(e.target.value)} required />
                         <LabeledSelect label="نظام الدفع" value={paymentTerm} onChange={e => setPaymentTerm(e.target.value as PaymentTerm)} required>
-                            <option value="monthly">شهري</option><option value="quarterly">كل 3 أشهر</option><option value="semi_annually">كل 6 أشهر</option>
+                            <option value="monthly">شهري</option>
+                            <option value="quarterly">كل 3 أشهر</option>
+                            <option value="semi_annually">كل 6 أشهر</option>
                         </LabeledSelect>
-                        <LabeledInput label="خط العرض" type="number" step="any" value={latitude} onChange={e => setLatitude(e.target.value)} />
-                        <LabeledInput label="خط الطول" type="number" step="any" value={longitude} onChange={e => setLongitude(e.target.value)} />
+                        <LabeledInput label="خط العرض (Latitude)" type="number" step="any" value={latitude} onChange={e => setLatitude(e.target.value)} placeholder="مثال: 35.9531" />
+                        <LabeledInput label="خط الطول (Longitude)" type="number" step="any" value={longitude} onChange={e => setLongitude(e.target.value)} placeholder="مثال: 39.0192" />
+                        <LabeledInput label="رابط الموقع (يتم إنشاؤه تلقائياً)" type="url" value={mapLink} readOnly disabled className="!bg-gray-200 dark:!bg-zinc-800 cursor-not-allowed" />
                         
                         {error && <p className="text-red-400 text-sm text-center">{error}</p>}
-                        <div className="pt-4 flex gap-4">
-                            <Button type="button" variant="secondary" onClick={() => navigate(-1)} className="flex-1">إلغاء</Button>
-                            <Button type="submit" loading={updating} className="flex-1">حفظ التغييرات</Button>
+                        <div className="pt-4">
+                            <Button type="submit" loading={updating}>
+                                حفظ التعديلات
+                            </Button>
                         </div>
                     </form>
                 </div>
@@ -231,14 +238,21 @@ const EditRentalScreen: React.FC = () => {
     );
 };
 
-
+// FIX: Added missing helper components Labeled, LabeledInput, and LabeledSelect.
+// Helper components for labeled inputs
 const Labeled: React.FC<{label: string, children: React.ReactNode}> = ({ label, children }) => (
     <div>
-        <label className="block text-sm font-medium text-slate-300 mb-2">{label}</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">{label}</label>
         {children}
     </div>
 );
-const LabeledInput: React.FC<React.ComponentProps<typeof Input> & {label: string}> = ({ label, ...props }) => ( <Labeled label={label}><Input {...props} /></Labeled> );
-const LabeledSelect: React.FC<React.ComponentProps<typeof Select> & {label: string}> = ({ label, ...props }) => ( <Labeled label={label}><Select {...props} /></Labeled> );
+
+const LabeledInput: React.FC<React.ComponentProps<typeof Input> & {label: string}> = ({ label, ...props }) => (
+    <Labeled label={label}><Input {...props} /></Labeled>
+);
+
+const LabeledSelect: React.FC<React.ComponentProps<typeof Select> & {label: string}> = ({ label, ...props }) => (
+    <Labeled label={label}><Select {...props} /></Labeled>
+);
 
 export default EditRentalScreen;

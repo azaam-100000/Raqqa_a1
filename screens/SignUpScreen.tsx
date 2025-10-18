@@ -38,9 +38,16 @@ const SignUpScreen: React.FC = () => {
     setError(null);
     
     const fullName = `${firstName} ${lastName}`.trim();
+    
+    if (!year || !month || !day) {
+      setError('الرجاء إدخال تاريخ ميلاد كامل.');
+      setLoading(false);
+      return;
+    }
+    const dateOfBirth = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
     // 1. Sign up the user and pass the full name in the metadata
-    const { error: signUpError } = await signUpWithPassword(email, password, fullName);
+    const { error: signUpError } = await signUpWithPassword(email, password, fullName, dateOfBirth);
     
     if (signUpError) {
       const message = getErrorMessage(signUpError);
@@ -68,7 +75,7 @@ const SignUpScreen: React.FC = () => {
             <Input type="text" placeholder="الاسم الأخير" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
         </div>
          <div>
-            <label className="text-sm text-slate-400 mb-2 block">تاريخ الميلاد</label>
+            <label className="text-sm text-zinc-400 mb-2 block">تاريخ الميلاد</label>
             <div className="flex gap-2">
                 <Select value={day} onChange={e => setDay(e.target.value)} required>
                     <option value="" disabled>اليوم</option>
@@ -91,9 +98,9 @@ const SignUpScreen: React.FC = () => {
             <Button type="submit" loading={loading} variant="primary">إنشاء حساب</Button>
         </div>
       </form>
-      <p className="mt-6 text-center text-sm text-slate-400">
+      <p className="mt-6 text-center text-sm text-zinc-400">
         لديك حساب بالفعل؟{' '}
-        <Link to="/login" className="font-medium text-cyan-400 hover:text-cyan-500">
+        <Link to="/login" className="font-medium text-teal-400 hover:text-teal-500">
           سجل الدخول
         </Link>
       </p>

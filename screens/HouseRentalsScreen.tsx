@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../services/supabase';
@@ -38,7 +37,7 @@ const HouseRentalsScreen: React.FC = () => {
 
             // 3. Fetch related data
             const [profilesRes, likesRes, commentsRes] = await Promise.all([
-                supabase.from('profiles').select('id, full_name, avatar_url').in('id', userIds),
+                supabase.from('profiles').select('id, full_name, avatar_url, bio').in('id', userIds),
                 supabase.from('rental_post_likes').select('post_id, user_id').in('post_id', postIds),
                 supabase.from('rental_post_comments').select('post_id, id').in('post_id', postIds)
             ]);
@@ -100,7 +99,7 @@ const HouseRentalsScreen: React.FC = () => {
             return <p className="text-center text-red-400 py-10">{error}</p>;
         }
         if (posts.length === 0) {
-            return <p className="text-center text-slate-400 py-10">لا توجد عروض إيجار متاحة حالياً. كن أول من يضيف عرضاً!</p>;
+            return <p className="text-center text-gray-500 dark:text-zinc-400 py-10">لا توجد عروض إيجار متاحة حالياً. كن أول من يضيف عرضاً!</p>;
         }
         return (
             <div className="space-y-4">
@@ -112,8 +111,8 @@ const HouseRentalsScreen: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-900 text-white">
-            <header className="bg-slate-800/80 backdrop-blur-sm sticky top-0 z-10 border-b border-slate-700">
+        <div className="min-h-screen">
+            <header className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-lg sticky top-0 z-10 border-b border-gray-200 dark:border-zinc-800">
                 <div className="container mx-auto px-4">
                     <div className="flex justify-between items-center h-16">
                         <h1 className="text-xl font-bold">بيوت للإيجار</h1>

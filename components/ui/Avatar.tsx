@@ -1,10 +1,9 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../services/supabase';
 import { useAuth } from '../../hooks/useAuth';
 
 const UserIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-1/2 w-1/2 text-slate-400"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-1/2 w-1/2 text-gray-500 dark:text-zinc-500"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
 );
 
 interface AvatarProps {
@@ -57,14 +56,14 @@ const Avatar: React.FC<AvatarProps> = ({ url, size = 40, className = '', userId,
         />
       ) : (
         <div
-          className="bg-slate-700 rounded-full flex items-center justify-center overflow-hidden w-full h-full"
+          className="bg-gray-200 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-full flex items-center justify-center overflow-hidden w-full h-full"
         >
           <UserIcon />
         </div>
       )}
       {online && (
         <span
-          className="absolute bottom-0 right-0 block rounded-full bg-green-500 border-slate-900"
+          className="absolute bottom-0 right-0 block rounded-full bg-green-500 border-white dark:border-zinc-900"
           style={indicatorStyle}
           title="متصل الآن"
         />

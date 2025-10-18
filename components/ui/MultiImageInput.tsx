@@ -1,9 +1,7 @@
-
-
 import React, { useState, useRef } from 'react';
 
 const UploadIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-slate-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-gray-400 dark:text-zinc-400"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
 );
 
 const CloseIcon = () => (
@@ -58,7 +56,7 @@ const MultiImageInput: React.FC<MultiImageInputProps> = ({ onFilesSelect }) => {
                     <button
                         type="button"
                         onClick={() => handleRemoveImage(index)}
-                        className="absolute top-1 right-1 bg-slate-900/50 text-white rounded-full p-1.5 hover:bg-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                        className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1.5 hover:bg-red-500 transition-colors opacity-0 group-hover:opacity-100"
                         aria-label="Remove image"
                     >
                         <CloseIcon />
@@ -68,10 +66,10 @@ const MultiImageInput: React.FC<MultiImageInputProps> = ({ onFilesSelect }) => {
             <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="aspect-square w-full bg-slate-700/50 border-2 border-dashed border-slate-600 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-cyan-500 transition-colors"
+                className="aspect-square w-full bg-gray-100 dark:bg-zinc-800/50 border-2 border-dashed border-gray-300 dark:border-zinc-700 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-teal-500 transition-colors"
             >
                 <UploadIcon />
-                <span className="text-xs text-slate-400 mt-1">إضافة صور</span>
+                <span className="text-xs text-gray-500 dark:text-zinc-400 mt-1">إضافة صور</span>
             </button>
             <input
                 type="file"

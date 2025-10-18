@@ -1,27 +1,24 @@
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { RentalPost } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
 import Avatar from './ui/Avatar';
-import { getErrorMessage, playLikeSound, triggerHapticFeedback } from '../utils/errors';
+import { getErrorMessage, playLikeSound, triggerHapticFeedback, timeAgo } from '../utils/errors';
 
-const timeAgo = (dateString: string) => {
-  const date = new Date(dateString);
-  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
-  let interval = seconds / 31536000; if (interval > 1) return `منذ ${Math.floor(interval)} سنة`;
-  interval = seconds / 2592000; if (interval > 1) return `منذ ${Math.floor(interval)} شهر`;
-  interval = seconds / 86400; if (interval > 1) return `منذ ${Math.floor(interval)} يوم`;
-  interval = seconds / 3600; if (interval > 1) return `منذ ${Math.floor(interval)} ساعة`;
-  interval = seconds / 60; if (interval > 1) return `منذ ${Math.floor(interval)} دقيقة`;
-  return 'الآن';
-};
+const AdminBadge = () => (
+    <span className="ml-2 inline-flex items-center gap-1 align-middle">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" className="flex-shrink-0">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="black"/>
+            <path d="m12 7.5 2.05 4.03 4.45.61-3.25 3.16.75 4.4-4-2.1-4 2.1.75-4.4-3.25-3.16 4.45-.61L12 7.5z" fill="#ef4444"/>
+        </svg>
+        <span className="text-xs font-bold text-red-500">الإدارة</span>
+    </span>
+);
 
-const HeartIcon = ({ filled }: { filled: boolean }) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`h-5 w-5 transform transition-all duration-300 ease-out group-hover:scale-125 ${ filled ? 'text-red-500 scale-110' : 'text-slate-400' }`}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg> );
-const CommentIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-slate-400 group-hover:text-cyan-400"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg> );
-const ShareIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-slate-400 group-hover:text-cyan-400"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg> );
+const HeartIcon = ({ filled }: { filled: boolean }) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`h-6 w-6 transform transition-all duration-300 ease-out group-hover:scale-125 ${ filled ? 'text-lime-400 scale-110' : 'text-gray-500 dark:text-zinc-400' }`}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg> );
+const CommentIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg> );
+const ShareIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg> );
 const BedIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 4v16h20V4Z"/><path d="M2 10h20"/><path d="M12 4v6"/></svg>);
 const MapPinIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>);
 const MoreIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg> );
@@ -43,6 +40,7 @@ const RentalPostCard: React.FC<RentalPostCardProps> = ({ post, onPostDeleted }) 
     const menuRef = useRef<HTMLDivElement>(null);
     const commentCount = post.rental_post_comments[0]?.count || 0;
     const isOwner = user?.id === post.user_id;
+    const isAuthorAdmin = post.profiles?.bio?.includes('[ADMIN]');
     
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -138,25 +136,28 @@ const RentalPostCard: React.FC<RentalPostCardProps> = ({ post, onPostDeleted }) 
     };
 
     return (
-    <div className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden group shadow-lg">
+    <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl overflow-hidden group">
         <div className="p-4">
              <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3 mb-2 flex-1">
                     <Avatar url={post.profiles?.avatar_url} size={40} userId={post.user_id} showStatus={true} />
                     <div>
-                        <p className="font-semibold text-white">{post.profiles?.full_name}</p>
-                        <p className="text-xs text-slate-400">{timeAgo(post.created_at)}</p>
+                        <p className="font-semibold text-gray-900 dark:text-zinc-100 flex items-center">
+                            {post.profiles?.full_name}
+                            {isAuthorAdmin && <AdminBadge />}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-zinc-400">{timeAgo(post.created_at)}</p>
                     </div>
                 </div>
                  {isOwner && (
                     <div className="relative" ref={menuRef}>
-                        <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); setIsMenuOpen(!isMenuOpen);}} className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-full">
+                        <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); setIsMenuOpen(!isMenuOpen);}} className="p-2 text-gray-500 dark:text-zinc-400 hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full">
                             <MoreIcon />
                         </button>
                         {isMenuOpen && (
-                            <div className="absolute left-0 mt-2 w-40 bg-slate-700 border border-slate-600 rounded-md shadow-lg z-10">
-                                <Link to={`/rental/${post.id}/edit`} onClick={(e) => e.stopPropagation()} className="block w-full text-right px-4 py-2 text-sm text-slate-300 hover:bg-slate-600">تعديل</Link>
-                                <button onClick={handleDelete} className={`block w-full text-right px-4 py-2 text-sm hover:bg-slate-600 transition-colors ${confirmingDelete ? 'bg-red-700 text-white' : 'text-red-400'}`}>
+                            <div className="absolute left-0 mt-2 w-40 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-md shadow-lg z-10">
+                                <Link to={`/rental/${post.id}/edit`} onClick={(e) => e.stopPropagation()} className="block w-full text-right px-4 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700">تعديل</Link>
+                                <button onClick={handleDelete} className={`block w-full text-right px-4 py-2 text-sm text-red-500 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors ${confirmingDelete ? 'bg-red-600 text-white' : ''}`}>
                                     {confirmingDelete ? 'تأكيد الحذف؟' : 'حذف'}
                                 </button>
                             </div>
@@ -166,14 +167,14 @@ const RentalPostCard: React.FC<RentalPostCardProps> = ({ post, onPostDeleted }) 
             </div>
         </div>
         <Link to={`/rental/${post.id}`} className="block">
-            <div className="relative aspect-video w-full bg-slate-700">
-                {imageUrl && <img src={imageUrl} alt="Rental property" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />}
+            <div className="relative w-full bg-gray-200 dark:bg-zinc-800">
+                {imageUrl && <img src={imageUrl} alt="Rental property" className="w-full h-auto" />}
                  <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
                      <p className="text-white text-xl font-bold">{post.rent_amount.toLocaleString()}$ / الشهر</p>
                  </div>
             </div>
             <div className="p-4">
-                 <div className="flex items-center gap-4 text-slate-300 text-sm">
+                 <div className="flex items-center gap-4 text-gray-700 dark:text-zinc-300 text-sm">
                     <div className="flex items-center gap-1.5">
                         <MapPinIcon />
                         <span>{post.region}</span>
@@ -185,17 +186,22 @@ const RentalPostCard: React.FC<RentalPostCardProps> = ({ post, onPostDeleted }) 
                  </div>
             </div>
         </Link>
-        <div className="border-t border-slate-700 p-2 flex justify-around items-center text-sm">
-           <button onClick={handleLikeToggle} className="flex items-center gap-1.5 group p-2 rounded-md transform transition-transform active:scale-125">
+        <div className="border-t border-gray-200 dark:border-zinc-800 pt-2 flex justify-around items-center text-gray-500 dark:text-zinc-400">
+           <button 
+              onClick={handleLikeToggle} 
+              className="flex items-center gap-2 group p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-900 transform transition-transform active:scale-125"
+              aria-label={isLiked ? 'إلغاء الإعجاب' : 'إعجاب'}
+            >
                 <HeartIcon filled={isLiked} />
-                <span className="text-slate-400 group-hover:text-red-400">{likeCount}</span>
-           </button>
-            <Link to={`/rental/${post.id}`} className="flex items-center gap-1.5 group p-2 rounded-md">
+                <span className="text-sm">{likeCount}</span>
+            </button>
+            <Link to={`/rental/${post.id}`} className="flex items-center gap-2 group hover:text-teal-400 text-sm transition-colors p-2 rounded-md">
                <CommentIcon />
-                <span className="text-slate-400 group-hover:text-cyan-400">{commentCount}</span>
+                <span className="text-sm">{commentCount}</span>
            </Link>
-            <button onClick={handleShare} className="flex items-center gap-1.5 group p-2 rounded-md">
+            <button onClick={handleShare} className="flex items-center gap-2 group hover:text-teal-400 text-sm transition-colors p-2 rounded-md">
                <ShareIcon />
+               <span className="text-sm">مشاركة</span>
            </button>
        </div>
     </div>

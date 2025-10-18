@@ -9,6 +9,9 @@ import PostCard from '../components/PostCard';
 import CommentCard from '../components/CommentCard';
 import CreateCommentForm from '../components/CreateCommentForm';
 import { getErrorMessage } from '../utils/errors';
+import PostCardSkeleton from '../components/ui/PostCardSkeleton';
+import CommentCardSkeleton from '../components/ui/CommentCardSkeleton';
+import { useAuth } from '../hooks/useAuth';
 
 const BackIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
@@ -17,6 +20,7 @@ const BackIcon = () => (
 const PostDetailScreen: React.FC = () => {
     const { postId } = useParams<{ postId: string }>();
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [post, setPost] = useState<Post | null>(null);
     const [comments, setComments] = useState<Comment[]>([]);
     const [loading, setLoading] = useState(true);
@@ -27,57 +31,61 @@ const PostDetailScreen: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
-            // Step 1: Fetch base post
             const { data: postData, error: postError } = await supabase
                 .from('posts')
-                .select('id, content, image_url, created_at, user_id, group_id')
+                .select('*, profiles!user_id(full_name, avatar_url, bio), groups!group_id(name), likes(user_id), comments(count)')
                 .eq('id', postId)
                 .single();
+
             if (postError) throw postError;
-
-            // Step 2: Fetch related post data + comments in parallel
-            const [
-                profileResult,
-                likesResult,
-                commentsResult
-            ] = await Promise.all([
-                supabase.from('profiles').select('full_name, avatar_url').eq('id', postData.user_id).single(),
-                supabase.from('likes').select('user_id').eq('post_id', postId),
-                supabase.from('comments').select('id, content, created_at, user_id, post_id').eq('post_id', postId).order('created_at', { ascending: true })
-            ]);
-
-            const { data: profileData, error: profileError } = profileResult;
-            if (profileError) console.warn('Could not fetch post author profile', profileError.message);
-            if (likesResult.error) throw likesResult.error;
-            if (commentsResult.error) throw commentsResult.error;
+            setPost(postData as Post);
             
-            // Step 3: Augment post data
-            setPost({
-                ...postData,
-                profiles: profileData || null,
-                likes: likesResult.data || [],
-                comments: [{ count: commentsResult.data?.length || 0 }]
-            } as Post);
+            // 1. Fetch comments without the profile join
+            const { data: commentsData, error: commentsError } = await supabase
+                .from('comments')
+                .select('*')
+                .eq('post_id', postId)
+                .order('created_at', { ascending: true });
 
-            // Step 4: Augment comments data
-            const commentsData = commentsResult.data;
-            if (commentsData && commentsData.length > 0) {
-                const commentUserIds = [...new Set(commentsData.map(c => c.user_id))];
-                const { data: commentProfiles, error: commentProfilesError } = await supabase
+            if (commentsError) throw commentsError;
+            if (!commentsData || commentsData.length === 0) {
+                setComments([]);
+            } else {
+                // 2. Collect unique user IDs from comments
+                const userIds = [...new Set(commentsData.map(c => c.user_id))];
+
+                // 3. Fetch profiles for those users
+                const { data: profilesData, error: profilesError } = await supabase
                     .from('profiles')
-                    .select('id, full_name, avatar_url')
-                    .in('id', commentUserIds);
-                if (commentProfilesError) throw commentProfilesError;
+                    .select('id, full_name, avatar_url, bio')
+                    .in('id', userIds);
+                
+                if (profilesError) throw profilesError;
 
-                const profilesMap = new Map((commentProfiles || []).map(p => [p.id, p]));
-                const augmentedComments = commentsData.map(comment => ({
+                // 4. Create a map for easy lookup and join client-side
+                const profilesMap = new Map((profilesData || []).map(p => [p.id, p]));
+                const commentsWithProfiles = commentsData.map(comment => ({
                     ...comment,
                     profiles: profilesMap.get(comment.user_id) || null
                 }));
-                setComments(augmentedComments as any[]);
-            } else {
-                setComments([]);
+
+                // Process into nested structure
+                const commentsMap = new Map();
+                const topLevelComments: Comment[] = [];
+                (commentsWithProfiles as any[] || []).forEach(comment => {
+                    comment.replies = [];
+                    commentsMap.set(comment.id, comment);
+                });
+                (commentsWithProfiles as any[] || []).forEach(comment => {
+                    if (comment.parent_comment_id && commentsMap.has(comment.parent_comment_id)) {
+                        commentsMap.get(comment.parent_comment_id).replies.push(comment);
+                    } else {
+                        topLevelComments.push(comment);
+                    }
+                });
+                setComments(topLevelComments);
             }
+
         } catch (err: unknown) {
             console.error(err);
             const message = getErrorMessage(err);
@@ -90,28 +98,39 @@ const PostDetailScreen: React.FC = () => {
 
 
     useEffect(() => {
-        if(!postId) return;
+        if(!postId || !user) return;
 
         fetchInitialData();
         
         const channel = supabase.channel(`post-details-${postId}`);
         
-        const subscriptions = channel
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'comments', filter: `post_id=eq.${postId}` }, () => fetchInitialData())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'likes', filter: `post_id=eq.${postId}`}, () => fetchInitialData())
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'posts', filter: `id=eq.${postId}` }, (payload) => {
-                if (payload.eventType === 'DELETE') {
-                    navigate('/home', { replace: true });
-                } else {
-                    fetchInitialData();
-                }
+        channel
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments', filter: `post_id=eq.${postId}` }, async (payload) => {
+                // Refetch on new comment to handle nesting simply
+                fetchInitialData();
+            })
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'comments', filter: `post_id=eq.${postId}` }, (payload) => {
+                handleCommentDeleted(payload.old.id as string);
+                setPost(p => p ? ({ ...p, comments: [{ count: Math.max(0, (p.comments[0]?.count || 1) - 1) }] }) : null);
+            })
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'likes', filter: `post_id=eq.${postId}`}, (payload) => {
+                setPost(p => p && !p.likes.some(l => l.user_id === payload.new.user_id) ? ({ ...p, likes: [...p.likes, payload.new as Like] }) : p);
+            })
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'likes', filter: `post_id=eq.${postId}`}, (payload) => {
+                setPost(p => p ? ({ ...p, likes: p.likes.filter(l => l.user_id !== payload.old.user_id) }) : p);
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts', filter: `id=eq.${postId}` }, (payload) => {
+                 setPost(p => p ? ({...p, ...payload.new}) : null);
+            })
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'posts', filter: `id=eq.${postId}` }, () => {
+                navigate('/home', { replace: true });
             })
             .subscribe();
 
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [postId, fetchInitialData, navigate]);
+    }, [postId, user, navigate, fetchInitialData]);
 
     const handlePostDeleted = useCallback(() => {
         navigate('/home', { replace: true });
@@ -122,15 +141,56 @@ const PostDetailScreen: React.FC = () => {
     };
 
     const handleCommentCreated = (newComment: Comment) => {
-        setComments(current => [...current, newComment]);
+        setComments(currentComments => {
+            const newCommentsState = JSON.parse(JSON.stringify(currentComments));
+
+            if (newComment.parent_comment_id) {
+                const findAndAdd = (list: Comment[]) => {
+                    for (let i = 0; i < list.length; i++) {
+                        if (list[i].id === newComment.parent_comment_id) {
+                            if (!list[i].replies) list[i].replies = [];
+                            list[i].replies.push(newComment);
+                            return true;
+                        }
+                        if (list[i].replies && findAndAdd(list[i].replies)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+                findAndAdd(newCommentsState);
+                return newCommentsState;
+            } else {
+                return [...newCommentsState, newComment];
+            }
+        });
     };
 
     const handleCommentDeleted = (commentId: string) => {
-        setComments(current => current.filter(c => c.id !== commentId));
+        const removeComment = (list: Comment[]): Comment[] => {
+            return list.filter(c => c.id !== commentId).map(c => {
+                if (c.replies) {
+                    return { ...c, replies: removeComment(c.replies) };
+                }
+                return c;
+            });
+        };
+        setComments(current => removeComment(current));
     };
 
     const handleCommentUpdated = (updatedComment: Comment) => {
-        setComments(current => current.map(c => c.id === updatedComment.id ? { ...c, content: updatedComment.content } : c));
+        const updateComment = (list: Comment[]): Comment[] => {
+            return list.map(c => {
+                if (c.id === updatedComment.id) {
+                    return { ...c, content: updatedComment.content };
+                }
+                if (c.replies) {
+                    return { ...c, replies: updateComment(c.replies) };
+                }
+                return c;
+            });
+        };
+        setComments(current => updateComment(current));
     };
 
     return (
@@ -149,9 +209,20 @@ const PostDetailScreen: React.FC = () => {
 
         <main className="container mx-auto px-4 py-6">
           <div className="max-w-2xl mx-auto">
-            {loading && <div className="text-center py-10"><Spinner /></div>}
+            {loading && (
+              <div>
+                <PostCardSkeleton />
+                <div className="mt-6">
+                  <div className="h-5 bg-slate-700 rounded w-1/4 mb-4 animate-pulse"></div>
+                  <div className="space-y-4 mt-4">
+                    <CommentCardSkeleton />
+                    <CommentCardSkeleton />
+                  </div>
+                </div>
+              </div>
+            )}
             {error && <p className="text-center text-red-400 py-10">{error}</p>}
-            {post && (
+            {!loading && post && (
               <>
                 <PostCard 
                     post={post} 
@@ -171,6 +242,8 @@ const PostDetailScreen: React.FC = () => {
                                 <CommentCard 
                                     key={comment.id} 
                                     comment={comment} 
+                                    postOwnerId={post.user_id}
+                                    onCommentCreated={handleCommentCreated}
                                     onCommentUpdated={handleCommentUpdated} 
                                     onCommentDeleted={handleCommentDeleted}
                                 />

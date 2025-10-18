@@ -13,9 +13,12 @@ interface CreateCommentFormProps {
   postId: string;
   postOwnerId: string;
   onCommentCreated: (newComment: Comment) => void;
+  parentCommentId?: string;
+  parentCommentAuthorId?: string;
+  onReplySuccess?: () => void;
 }
 
-const CreateCommentForm: React.FC<CreateCommentFormProps> = ({ postId, postOwnerId, onCommentCreated }) => {
+const CreateCommentForm: React.FC<CreateCommentFormProps> = ({ postId, postOwnerId, onCommentCreated, parentCommentId, parentCommentAuthorId, onReplySuccess }) => {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,8 +33,13 @@ const CreateCommentForm: React.FC<CreateCommentFormProps> = ({ postId, postOwner
 
     const { data: insertedComment, error } = await supabase
       .from('comments')
-      .insert([{ content: content.trim(), user_id: user.id, post_id: postId }])
-      .select('id, content, created_at, user_id, post_id')
+      .insert([{ 
+          content: content.trim(), 
+          user_id: user.id, 
+          post_id: postId,
+          parent_comment_id: parentCommentId || null
+      }])
+      .select('id, content, created_at, user_id, post_id, parent_comment_id')
       .single();
 
 
@@ -51,15 +59,27 @@ const CreateCommentForm: React.FC<CreateCommentFormProps> = ({ postId, postOwner
       };
       onCommentCreated(newFullComment as any);
 
-      // Send notification if not commenting on own post
+      // Notify post owner (if not self)
       if (user.id !== postOwnerId) {
         await supabase.from('notifications').insert({
-            user_id: postOwnerId, // Recipient
-            actor_id: user.id,     // Sender
+            user_id: postOwnerId,
+            actor_id: user.id,
             type: 'comment_post',
             entity_id: postId,
         });
       }
+      
+      // Notify parent comment author (if it's a reply and not self)
+      if (parentCommentId && parentCommentAuthorId && user.id !== parentCommentAuthorId) {
+          await supabase.from('notifications').insert({
+            user_id: parentCommentAuthorId,
+            actor_id: user.id,
+            type: 'reply_comment',
+            entity_id: postId,
+          });
+      }
+
+      if (onReplySuccess) onReplySuccess();
       setLoading(false);
     }
   };
@@ -72,18 +92,19 @@ const CreateCommentForm: React.FC<CreateCommentFormProps> = ({ postId, postOwner
         <div className="flex-1">
           <form onSubmit={handleSubmit}>
             <Textarea
-              rows={2}
-              placeholder="أضف تعليقاً..."
+              rows={parentCommentId ? 1 : 2}
+              placeholder={parentCommentId ? "اكتب رداً..." : "أضف تعليقاً..."}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               disabled={loading}
               required
+              className={parentCommentId ? "!py-2 !text-sm" : ""}
             />
             {error && <p className="text-red-400 text-sm mt-2 text-right">{error}</p>}
             <div className="flex justify-end mt-2">
               <div className="w-full sm:w-auto">
                  <Button type="submit" loading={loading} disabled={!content.trim()} className="!py-2 !text-sm">
-                   تعليق
+                   {parentCommentId ? "رد" : "تعليق"}
                  </Button>
               </div>
             </div>

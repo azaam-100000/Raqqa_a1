@@ -101,7 +101,7 @@ export const useLiveConversation = () => {
              setTranscriptionHistory(prev => {
                 const last = prev[prev.length - 1];
                 if (last?.author === 'user' && !last.isFinal) {
-                    const updated = [...prev.slice(0, -1), { ...last, text, isFinal }];
+                    const updated = [...prev.slice(0, -1), { ...last, text: last.text + text, isFinal }];
                      return updated;
                 }
                 return [...prev, { text, author: 'user', isFinal }];

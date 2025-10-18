@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Message } from '../types';
 import { supabase } from '../services/supabase';
+import { Link } from 'react-router-dom';
 
 const PlayIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="currentColor" stroke="currentColor" strokeWidth="1"><path d="M8 5v14l11-7z"></path></svg> );
 const PauseIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="currentColor" stroke="currentColor" strokeWidth="1"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg> );
@@ -11,9 +12,10 @@ const DoubleCheckIcon = ({ color }: { color: string }) => (
         <path d="m22 6-11 11-4-4"></path>
     </svg>
 );
+const MegaphoneIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>;
 
 
-const AudioPlayer: React.FC<{ src: string }> = ({ src }) => {
+const AudioPlayer: React.FC<{ src: string; isSender: boolean }> = ({ src, isSender }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [duration, setDuration] = useState(0);
     const [currentTime, setCurrentTime] = useState(0);
@@ -55,18 +57,23 @@ const AudioPlayer: React.FC<{ src: string }> = ({ src }) => {
     }, []);
 
     const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+    
+    const colors = isSender
+      ? { text: 'text-zinc-800/80', bg: 'bg-black/10', progress: 'bg-zinc-800' }
+      : { text: 'text-zinc-500 dark:text-zinc-400', bg: 'bg-zinc-300 dark:bg-zinc-700', progress: 'bg-zinc-600 dark:bg-zinc-400' };
+
 
     return (
         <div className="flex items-center gap-3 w-full max-w-[280px]">
             <audio ref={audioRef} src={src} preload="metadata"></audio>
-            <button onClick={togglePlayPause} className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-white/20 text-white">
+            <button onClick={togglePlayPause} className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full ${colors.bg} ${isSender ? 'text-zinc-900' : 'text-zinc-800 dark:text-white'}`}>
                 {isPlaying ? <PauseIcon /> : <PlayIcon />}
             </button>
             <div className="flex-grow flex items-center gap-2">
-                <div className="w-full bg-white/20 h-1.5 rounded-full">
-                    <div style={{ width: `${progress}%` }} className="h-full bg-white rounded-full"></div>
+                <div className={`w-full ${colors.bg} h-1.5 rounded-full`}>
+                    <div style={{ width: `${progress}%` }} className={`h-full ${colors.progress} rounded-full`}></div>
                 </div>
-                <span className="text-xs text-white/80 font-mono w-10 text-right">{formatTime(duration)}</span>
+                <span className={`text-xs ${colors.text} font-mono w-10 text-right`}>{formatTime(duration)}</span>
             </div>
         </div>
     );
@@ -74,12 +81,17 @@ const AudioPlayer: React.FC<{ src: string }> = ({ src }) => {
 
 interface MessageBubbleProps {
   message: Message;
+  isFirstInGroup: boolean;
+  isLastInGroup: boolean;
+  onOpenMenu: (message: Message, target: HTMLElement) => void;
+  showReadReceipt: boolean;
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isFirstInGroup, isLastInGroup, onOpenMenu, showReadReceipt }) => {
   const { user } = useAuth();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const longPressTimer = useRef<number | undefined>();
 
   useEffect(() => {
     if (message.image_url) {
@@ -94,30 +106,98 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
 
 
   const isSender = message.sender_id === user?.id;
-  const bubbleClasses = isSender ? 'bg-cyan-600 rounded-br-none self-end' : 'bg-slate-700 rounded-bl-none self-start';
+  
+  const bubbleClasses = isSender 
+    ? `bg-gradient-to-br from-teal-400 to-lime-400 text-zinc-900 ${isLastInGroup ? 'rounded-br-none' : 'rounded-br-2xl'}` 
+    : `bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white ${isLastInGroup ? 'rounded-bl-none' : 'rounded-bl-2xl'}`;
+  
   const containerClasses = isSender ? 'justify-end' : 'justify-start';
-  const paddingClasses = !message.content && imageUrl ? 'p-1.5' : 'px-4 pt-3 pb-1';
+  const marginClass = isFirstInGroup ? 'mt-2' : 'mt-0.5';
+  
   const messageTime = new Date(message.created_at).toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
 
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+      longPressTimer.current = window.setTimeout(() => {
+          onOpenMenu(message, e.currentTarget);
+      }, 500); // 500ms for a long press
+  };
+
+  const handleTouchEnd = () => {
+      clearTimeout(longPressTimer.current);
+  };
+  
+  const handleTouchMove = () => {
+      clearTimeout(longPressTimer.current);
+  };
+
+  const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      onOpenMenu(message, e.currentTarget);
+  };
+  
+  const promotionMatch = message.content?.match(/^\[PROMOTION_POST:(.+)\]$/);
+  if (promotionMatch) {
+      const postId = promotionMatch[1];
+      const promoBubbleClasses = isSender
+          ? `bg-gradient-to-br from-teal-500 to-cyan-500 text-white ${isLastInGroup ? 'rounded-br-none' : 'rounded-br-2xl'}`
+          : `bg-gradient-to-br from-zinc-700 to-zinc-800 text-white ${isLastInGroup ? 'rounded-bl-none' : 'rounded-bl-2xl'}`;
+
+      return (
+          <div className={`flex ${containerClasses} ${marginClass}`}>
+              <div 
+                  className={`max-w-md lg:max-w-xl rounded-2xl cursor-default ${promoBubbleClasses} p-4`}
+              >
+                  <div className="flex items-center gap-3">
+                      <div className="bg-white/20 rounded-full p-2">
+                          <MegaphoneIcon />
+                      </div>
+                      <div>
+                          <p className="font-bold">منشور مقترح من الإدارة</p>
+                          <p className="text-sm opacity-80">شاهد هذا المنشور الموصى به.</p>
+                      </div>
+                  </div>
+                  <Link to={`/post/${postId}`} className="block mt-3 bg-white/90 text-zinc-900 font-bold py-2 px-4 rounded-lg hover:bg-white/70 transition-colors text-center">
+                      عرض
+                  </Link>
+                  <div className="flex justify-end items-center gap-2 mt-2">
+                      <span className={`text-xs ${isSender ? 'text-white/60' : 'text-white/60'}`}>{messageTime}</span>
+                      {isSender && (
+                          <DoubleCheckIcon color={message.read && showReadReceipt ? '#2dd4bf' : '#94a3b8'} />
+                      )}
+                  </div>
+              </div>
+          </div>
+      );
+  }
+
+
+  const paddingClasses = !message.content && imageUrl ? 'p-1.5' : 'px-4 pt-3 pb-1';
+
   return (
-    <div className={`flex ${containerClasses}`}>
-      <div className={`max-w-md lg:max-w-xl rounded-2xl ${bubbleClasses} ${paddingClasses}`}>
+    <div className={`flex ${containerClasses} ${marginClass}`}>
+      <div 
+        className={`max-w-md lg:max-w-xl rounded-2xl cursor-pointer ${bubbleClasses} ${paddingClasses}`}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchMove}
+        onContextMenu={handleContextMenu}
+      >
         {imageUrl && (
             <img 
                 src={imageUrl} 
                 alt="محتوى مرسل"
-                className={`rounded-lg max-w-xs max-h-80 object-cover cursor-pointer ${message.content || audioUrl ? 'mb-2' : ''}`}
+                className={`rounded-lg max-w-xs max-h-80 object-cover ${message.content || audioUrl ? 'mb-2' : ''}`}
                 onClick={() => window.open(imageUrl, '_blank')}
             />
         )}
-        {audioUrl && <AudioPlayer src={audioUrl} />}
+        {audioUrl && <AudioPlayer src={audioUrl} isSender={isSender} />}
         {message.content && (
-            <p className="text-white whitespace-pre-wrap">{message.content}</p>
+            <p className="whitespace-pre-wrap">{message.content}</p>
         )}
         <div className="flex justify-end items-center gap-2 mt-1">
-            <span className="text-xs text-white/60">{messageTime}</span>
+            <span className={`text-xs ${isSender ? 'text-black/50' : 'text-gray-500/80 dark:text-zinc-400/80'}`}>{messageTime}</span>
             {isSender && (
-                <DoubleCheckIcon color={message.read ? '#67e8f9' : '#94a3b8'} />
+                <DoubleCheckIcon color={message.read && showReadReceipt ? '#2dd4bf' : '#94a3b8'} />
             )}
         </div>
       </div>

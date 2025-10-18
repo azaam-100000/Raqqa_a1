@@ -1,5 +1,3 @@
-
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
@@ -39,7 +37,10 @@ const CreateStoreScreen: React.FC = () => {
             const fileName = `${user.id}/stores/${Date.now()}.${fileExt}`;
             const { error: uploadError } = await supabase.storage
                 .from('uploads')
-                .upload(fileName, imageFile);
+                .upload(fileName, imageFile, {
+                    contentType: imageFile.type,
+                    upsert: true,
+                });
             
             if (uploadError) throw uploadError;
 
@@ -72,11 +73,11 @@ const CreateStoreScreen: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-900 text-white">
-            <header className="bg-slate-800/80 backdrop-blur-sm sticky top-0 z-10 border-b border-slate-700">
+        <div className="min-h-screen">
+            <header className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-lg sticky top-0 z-10 border-b border-gray-200 dark:border-zinc-800">
                 <div className="container mx-auto px-4">
                     <div className="flex items-center h-16 relative">
-                        <button onClick={() => navigate(-1)} className="absolute right-0 p-2 rounded-full hover:bg-slate-700">
+                        <button onClick={() => navigate(-1)} className="absolute right-0 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800">
                             <BackIcon />
                         </button>
                         <h1 className="text-xl font-bold text-center w-full">إنشاء متجر جديد</h1>
@@ -85,10 +86,10 @@ const CreateStoreScreen: React.FC = () => {
             </header>
             <main className="container mx-auto px-4 py-6">
                 <div className="max-w-2xl mx-auto">
-                    <form onSubmit={handleSubmit} className="bg-slate-800 border border-slate-700 rounded-lg p-6 space-y-4">
+                    <form onSubmit={handleSubmit} className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-6 space-y-4">
                         <ImageInput onFileSelect={setImageFile} />
                         <div>
-                            <label htmlFor="store-name" className="block text-sm font-medium text-slate-300 mb-2">اسم المتجر</label>
+                            <label htmlFor="store-name" className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-2">اسم المتجر</label>
                             <Input
                                 id="store-name"
                                 type="text"
@@ -100,7 +101,7 @@ const CreateStoreScreen: React.FC = () => {
                             />
                         </div>
                         <div>
-                            <label htmlFor="store-description" className="block text-sm font-medium text-slate-300 mb-2">وصف المتجر</label>
+                            <label htmlFor="store-description" className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-2">وصف المتجر</label>
                             <Textarea
                                 id="store-description"
                                 rows={4}

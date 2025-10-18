@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../services/supabase';
@@ -9,6 +7,7 @@ import Spinner from '../components/ui/Spinner';
 import Button from '../components/ui/Button';
 import StoreCard from '../components/StoreCard';
 import { getErrorMessage } from '../utils/errors';
+import StoreCardSkeleton from '../components/ui/StoreCardSkeleton';
 
 const StoresScreen: React.FC = () => {
   const { user } = useAuth();
@@ -123,7 +122,13 @@ const StoresScreen: React.FC = () => {
 
   const renderContent = () => {
     if (loading) {
-      return <div className="text-center py-10"><Spinner /></div>;
+      return (
+        <div className="flex flex-col gap-3">
+          <StoreCardSkeleton />
+          <StoreCardSkeleton />
+          <StoreCardSkeleton />
+        </div>
+      );
     }
     if (error) {
       return <p className="text-center text-red-400 py-10">{error}</p>;
@@ -134,7 +139,7 @@ const StoresScreen: React.FC = () => {
         'my-stores': "أنت لا تملك أي متاجر بعد. أنشئ متجرك الأول!",
         following: "أنت لا تتابع أي متاجر بعد."
       };
-      return <p className="text-center text-slate-400 py-10">{messages[activeTab]}</p>;
+      return <p className="text-center text-zinc-500 dark:text-zinc-400 py-10">{messages[activeTab]}</p>;
     }
     return (
       <div className="flex flex-col gap-3">
@@ -147,12 +152,12 @@ const StoresScreen: React.FC = () => {
 
   const tabButtonClasses = (tabName: typeof activeTab) => 
     `flex-1 px-4 py-2 text-sm font-semibold rounded-md transition-colors ${
-      activeTab === tabName ? 'bg-cyan-600 text-white' : 'text-slate-300 hover:bg-slate-700'
+      activeTab === tabName ? 'bg-teal-500 text-white' : 'text-zinc-600 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700'
     }`;
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
-      <header className="bg-slate-800/80 backdrop-blur-sm sticky top-0 z-10 border-b border-slate-700">
+    <div className="min-h-screen">
+      <header className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-lg sticky top-0 z-10 border-b border-gray-200 dark:border-zinc-800">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center h-16">
             <h1 className="text-xl font-bold">المتاجر</h1>
@@ -164,7 +169,7 @@ const StoresScreen: React.FC = () => {
       </header>
       <main className="container mx-auto px-4 py-6">
         <div className="max-w-2xl mx-auto">
-          <div className="bg-slate-800 p-1 rounded-lg flex gap-1 mb-4 border border-slate-700">
+          <div className="bg-gray-100 dark:bg-zinc-900 p-1 rounded-lg flex gap-1 mb-4 border border-gray-200 dark:border-zinc-800">
             <button className={tabButtonClasses('all')} onClick={() => setActiveTab('all')}>كل المتاجر</button>
             <button className={tabButtonClasses('my-stores')} onClick={() => setActiveTab('my-stores')}>متاجري</button>
             <button className={tabButtonClasses('following')} onClick={() => setActiveTab('following')}>أتابعها</button>

@@ -1,181 +1,229 @@
-
-
-import React, { useState, useRef, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import Layout from '../components/Layout';
-import Avatar from '../components/ui/Avatar';
-import Button from '../components/ui/Button';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../services/supabase';
+import { Profile, Post, PrivacySetting } from '../types';
+import { useAuth } from '../hooks/useAuth';
 import Spinner from '../components/ui/Spinner';
-import Input from '../components/ui/Input';
-import Textarea from '../components/ui/Textarea';
+import Avatar from '../components/ui/Avatar';
+import PostCard from '../components/PostCard';
+import Button from '../components/ui/Button';
 import { getErrorMessage } from '../utils/errors';
+import ProfileSkeleton from '../components/ui/ProfileSkeleton';
+import PostCardSkeleton from '../components/ui/PostCardSkeleton';
 
-const EditIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+const AdminBadge = () => (
+    <span className="ml-2 inline-flex items-center gap-1 align-middle">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" className="flex-shrink-0">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="black"/>
+            <path d="m12 7.5 2.05 4.03 4.45.61-3.25 3.16.75 4.4-4-2.1-4 2.1.75-4.4-3.25-3.16 4.45-.61L12 7.5z" fill="#ef4444"/>
+        </svg>
+        <span className="text-xs font-bold text-red-500">الإدارة</span>
+    </span>
+);
+
+const BackIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg> );
+const GlobeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>;
+const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+const LockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>;
+const HomeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
+const BriefcaseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>;
+const LinkIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"/></svg>;
+const PhoneIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>;
+const GenderIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"/><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"/><path d="M12 12v9"/></svg>;
+const BirthdayIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg>;
+
+
+const PrivacyIcon: React.FC<{ privacy: PrivacySetting | null }> = ({ privacy }) => {
+    switch (privacy) {
+        case 'public': return <GlobeIcon />;
+        case 'followers': return <UsersIcon />;
+        case 'private': return <LockIcon />;
+        default: return <GlobeIcon />;
+    }
+};
+
+const DetailRow: React.FC<{ icon: React.ReactNode; text: string | React.ReactNode; privacy: PrivacySetting | null }> = ({ icon, text, privacy }) => (
+    <div className="flex items-center gap-4 text-zinc-300">
+        <div className="text-zinc-400">{icon}</div>
+        <div className="flex-1">{text}</div>
+        <div className="text-zinc-500" title={`الخصوصية: ${privacy}`}><PrivacyIcon privacy={privacy} /></div>
+    </div>
 );
 
 const ProfileScreen: React.FC = () => {
-    const { user, profile, refreshProfile } = useAuth();
-    const [uploading, setUploading] = useState(false);
-    const [avatarError, setAvatarError] = useState<string | null>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const navigate = useNavigate();
+    const { user: currentUser, profile: currentProfile } = useAuth();
 
-    const [isEditing, setIsEditing] = useState(false);
-    const [fullName, setFullName] = useState(profile?.full_name || '');
-    const [bio, setBio] = useState(profile?.bio || '');
-    const [updateLoading, setUpdateLoading] = useState(false);
-    const [updateError, setUpdateError] = useState<string | null>(null);
+    const [posts, setPosts] = useState<Post[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [followerCount, setFollowerCount] = useState(0);
+    const [followingCount, setFollowingCount] = useState(0);
+    const [coverPhotoUrl, setCoverPhotoUrl] = useState<string | null>(null);
 
     useEffect(() => {
-        if (profile) {
-            setFullName(profile.full_name || '');
-            setBio(profile.bio || '');
+        if (!currentUser) return;
+
+        const fetchUserData = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const [followersRes, followingRes] = await Promise.all([
+                    supabase.from('followers').select('*', { count: 'exact', head: true }).eq('following_id', currentUser.id),
+                    supabase.from('followers').select('*', { count: 'exact', head: true }).eq('follower_id', currentUser.id)
+                ]);
+                
+                if (followersRes.error) throw followersRes.error;
+                if (followingRes.error) throw followingRes.error;
+                
+                setFollowerCount(followersRes.count || 0);
+                setFollowingCount(followingRes.count || 0);
+
+                const { data: postsData, error: postsError } = await supabase
+                    .from('posts')
+                    .select('*, profiles!user_id(full_name, avatar_url, bio), groups!group_id(name), likes(user_id), comments(count)')
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: false });
+
+                if (postsError) throw postsError;
+                
+                setPosts(postsData as Post[] || []);
+
+            } catch (err: any) {
+                setError(getErrorMessage(err));
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchUserData();
+    }, [currentUser]);
+
+    useEffect(() => {
+        if (currentProfile?.cover_photo_url) {
+            const { data } = supabase.storage.from('uploads').getPublicUrl(currentProfile.cover_photo_url);
+            setCoverPhotoUrl(data.publicUrl);
+        } else {
+            setCoverPhotoUrl(null);
         }
-    }, [profile]);
+    }, [currentProfile]);
 
-
-    const handleAvatarClick = () => {
-        fileInputRef.current?.click();
+    const handlePostDeleted = (postId: string) => {
+        setPosts(currentPosts => currentPosts.filter(p => p.id !== postId));
     };
 
-    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const files = event.target.files;
-        if (!files || files.length === 0 || !user) return;
-
-        const file = files[0];
-        const fileExt = file.name.split('.').pop();
-        // Use a unique path to prevent caching issues
-        const newFilePath = `${user.id}/avatar-${Date.now()}.${fileExt}`;
-        const oldFilePath = profile?.avatar_url; // Get old path for cleanup
-
-        setUploading(true);
-        setAvatarError(null);
-
-        try {
-            // 1. Upload the new avatar
-            const { error: uploadError } = await supabase.storage
-                .from('uploads')
-                .upload(newFilePath, file); // No upsert needed with unique path
-            if (uploadError) throw uploadError;
-
-            // 2. Update the profile with the new avatar URL
-            const { error: updateError } = await supabase
-                .from('profiles')
-                .update({ avatar_url: newFilePath })
-                .eq('id', user.id);
-            if (updateError) {
-                // If profile update fails, try to clean up the newly uploaded file
-                await supabase.storage.from('uploads').remove([newFilePath]);
-                throw updateError;
-            }
-            
-            // 3. Refresh the profile in the app state
-            await refreshProfile();
-            
-            // 4. Clean up the old avatar if it exists and is different from the new one
-            if (oldFilePath && oldFilePath !== newFilePath) {
-                const { error: removeError } = await supabase.storage
-                    .from('uploads')
-                    .remove([oldFilePath]);
-                if (removeError) {
-                    // Log this error but don't show to user, as the main operation succeeded
-                    console.warn("Failed to remove old avatar:", removeError.message);
-                }
-            }
-
-        } catch (error: any) {
-            // Use the utility to get a user-friendly error message
-            setAvatarError(getErrorMessage(error));
-        } finally {
-            setUploading(false);
-            if(fileInputRef.current) fileInputRef.current.value = "";
-        }
+    const handlePostUpdated = (updatedPost: Post) => {
+        setPosts(currentPosts => currentPosts.map(p => (p.id === updatedPost.id ? updatedPost : p)));
     };
     
-    const handleProfileUpdate = async () => {
-        if (!user) return;
-        setUpdateLoading(true);
-        setUpdateError(null);
-
-        try {
-            const { error } = await supabase.from('profiles').update({
-                full_name: fullName.trim(),
-                bio: bio.trim(),
-            }).eq('id', user.id);
-
-            if (error) throw error;
-            
-            await refreshProfile();
-            setIsEditing(false);
-        } catch (error: any) {
-            setUpdateError(`فشل تحديث الملف الشخصي: ${getErrorMessage(error)}`);
-        } finally {
-            setUpdateLoading(false);
-        }
-    };
+    const formattedDate = currentProfile?.date_of_birth ? new Date(currentProfile.date_of_birth).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }) : null;
     
-    const handleCancelEdit = () => {
-        setIsEditing(false);
-        setFullName(profile?.full_name || '');
-        setBio(profile?.bio || '');
-        setUpdateError(null);
-    }
+    const details = [
+        { icon: <BirthdayIcon />, value: formattedDate, text: `تاريخ الميلاد ${formattedDate}`, privacy: currentProfile?.date_of_birth_privacy },
+        { icon: <HomeIcon />, value: currentProfile?.place_of_origin, text: `من ${currentProfile?.place_of_origin}`, privacy: currentProfile?.place_of_origin_privacy },
+        { icon: <BriefcaseIcon />, value: currentProfile?.education_level, text: `درس في ${currentProfile?.education_level}`, privacy: currentProfile?.education_level_privacy },
+        { icon: <LinkIcon />, value: currentProfile?.website, text: <a href={currentProfile?.website || ''} target="_blank" rel="noopener noreferrer" className="hover:underline text-teal-400">{currentProfile?.website}</a>, privacy: currentProfile?.website_privacy },
+        { icon: <PhoneIcon />, value: currentProfile?.contact_info, text: currentProfile?.contact_info, privacy: currentProfile?.contact_info_privacy },
+        { icon: <GenderIcon />, value: currentProfile?.gender, text: currentProfile?.gender === 'male' ? 'ذكر' : 'أنثى', privacy: currentProfile?.gender_privacy }
+    ].filter(detail => detail.value);
 
     return (
-        <Layout>
-             <div className="bg-slate-800 border border-slate-700 rounded-lg shadow-lg p-6 sm:p-8 w-full">
-                 <div className="text-center">
-                    <h1 className="text-3xl font-bold text-white mb-6">الملف الشخصي</h1>
-                    <div className="relative inline-block mb-4">
-                        <Avatar url={profile?.avatar_url} size={128} userId={profile?.id} showStatus={true} />
-                        <button 
-                            onClick={handleAvatarClick}
-                            disabled={uploading}
-                            className="absolute bottom-1 -right-1 bg-cyan-600 hover:bg-cyan-700 text-white p-3 rounded-full shadow-lg transition-transform transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            aria-label="تغيير الصورة الرمزية"
-                        >
-                           {uploading ? <Spinner/> : <EditIcon />}
+        <div className="min-h-screen bg-zinc-950 text-zinc-200">
+            <header className="bg-zinc-950/70 backdrop-blur-lg sticky top-0 z-10 border-b border-zinc-800">
+                <div className="container mx-auto px-4">
+                     <div className="flex items-center h-16 relative">
+                        <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-zinc-800">
+                            <BackIcon />
                         </button>
-                        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/png, image/jpeg" disabled={uploading} />
+                        <h1 className="text-xl font-bold text-center w-full truncate px-12">
+                           ملفي الشخصي
+                        </h1>
                     </div>
-                     {avatarError && <p className="text-red-400 text-sm mb-4">{avatarError}</p>}
-                 </div>
-
-                {isEditing ? (
-                    <div className="space-y-4 mt-4">
-                         <div>
-                            <label htmlFor="full-name" className="block text-sm font-medium text-slate-300 mb-2">الاسم الكامل</label>
-                            <Input id="full-name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
-                        </div>
-                        <div>
-                            <label htmlFor="bio" className="block text-sm font-medium text-slate-300 mb-2">نبذة تعريفية</label>
-                            <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} rows={4} placeholder="تحدث عن نفسك..." />
-                        </div>
-                        {updateError && <p className="text-red-400 text-sm text-center">{updateError}</p>}
-                        <div className="flex gap-4 pt-2">
-                             <Button onClick={handleCancelEdit} variant="secondary">إلغاء</Button>
-                             <Button onClick={handleProfileUpdate} loading={updateLoading}>حفظ التغييرات</Button>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="text-center mt-4">
-                        <h2 className="text-2xl font-semibold text-white">{profile?.full_name}</h2>
-                        <p className="text-slate-400 mt-1">{user?.email}</p>
-                        <p className="text-slate-300 mt-4 min-h-[4rem] whitespace-pre-wrap">{profile?.bio || 'لا توجد نبذة تعريفية.'}</p>
-                        <div className="mt-6">
-                            <Button onClick={() => setIsEditing(true)}>تعديل الملف الشخصي</Button>
-                        </div>
-                    </div>
-                )}
-
-                <div className="mt-8">
-                    <Button onClick={() => window.history.back()} variant="secondary">
-                        العودة
-                    </Button>
                 </div>
-             </div>
-        </Layout>
+            </header>
+            <main className="container mx-auto px-4 py-6">
+                <div className="max-w-2xl mx-auto">
+                    {loading && (
+                      <div>
+                        <ProfileSkeleton />
+                        <div className="h-5 bg-zinc-700 rounded w-1/3 mb-4 animate-pulse"></div>
+                        <PostCardSkeleton />
+                      </div>
+                    )}
+                    {!loading && error && <p className="text-center text-red-400 py-10">{error}</p>}
+                    {!loading && currentProfile && (
+                        <div>
+                           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden mb-6">
+                                <div className="relative">
+                                    <div className="h-48 bg-zinc-800">
+                                        {coverPhotoUrl && (
+                                            <img src={coverPhotoUrl} alt="Cover" className="w-full h-full object-cover" />
+                                        )}
+                                    </div>
+                                    <div className="absolute -bottom-16 left-1/2 -translate-x-1/2">
+                                        <Avatar url={currentProfile.avatar_url} size={128} userId={currentProfile.id} showStatus={true} className="border-4 border-zinc-900"/>
+                                    </div>
+                                </div>
+                                
+                                <div className="pt-20 p-6 text-center">
+                                    <h2 className="text-2xl font-bold flex items-center justify-center">
+                                        {currentProfile.full_name}
+                                        {currentProfile.bio?.includes('[ADMIN]') && <AdminBadge />}
+                                    </h2>
+                                    <p className="text-zinc-400 mt-2">{currentProfile.bio?.replace('[ADMIN]', '').trim() || 'لا يوجد نبذة تعريفية.'}</p>
+                                </div>
+                                
+                                {details.length > 0 && (
+                                     <div className="px-6 pb-6 space-y-3 border-t border-zinc-800 pt-6">
+                                        {details.map((detail, index) => (
+                                            <DetailRow key={index} icon={detail.icon} text={detail.text} privacy={detail.privacy} />
+                                        ))}
+                                    </div>
+                                )}
+
+
+                                <div className="flex justify-center gap-6 px-6 border-t border-zinc-800">
+                                    <div className="text-center py-4">
+                                        <p className="font-bold text-lg">{posts.length}</p>
+                                        <p className="text-sm text-zinc-400">منشورات</p>
+                                    </div>
+                                    <Link to={`/user/${currentUser?.id}/followers`} className="text-center py-4">
+                                        <p className="font-bold text-lg">{followerCount}</p>
+                                        <p className="text-sm text-zinc-400 hover:underline">متابعون</p>
+                                    </Link>
+                                    <Link to={`/user/${currentUser?.id}/following`} className="text-center py-4">
+                                        <p className="font-bold text-lg">{followingCount}</p>
+                                        <p className="text-sm text-zinc-400 hover:underline">يتابع</p>
+                                    </Link>
+                                </div>
+
+                                <div className="p-6 border-t border-zinc-800">
+                                    <Button variant="secondary" onClick={() => navigate('/profile/edit')}>
+                                        تعديل الملف الشخصي
+                                    </Button>
+                                </div>
+                            </div>
+                            
+                            <h3 className="text-lg font-bold mb-4">منشوراتي ({posts.length})</h3>
+                            {posts.length > 0 ? (
+                                posts.map(post => (
+                                    <PostCard 
+                                        key={post.id} 
+                                        post={post} 
+                                        onPostDeleted={handlePostDeleted}
+                                        onPostUpdated={handlePostUpdated}
+                                    />
+                                ))
+                            ) : (
+                                !loading && <p className="text-center text-zinc-500 py-10 bg-zinc-900 rounded-2xl">
+                                    لم تقم بنشر أي شيء بعد.
+                                </p>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </main>
+        </div>
     );
 };
 

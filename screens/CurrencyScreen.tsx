@@ -1,6 +1,6 @@
 
-
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Spinner from '../components/ui/Spinner';
 import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
@@ -84,6 +84,7 @@ const localMarketRates = {
 
 type CityKey = keyof typeof localMarketRates;
 
+const BackIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg> );
 
 const CurrencyScreen: React.FC = () => {
     const [ratesData, setRatesData] = useState<FrankfurterResponse | null>(null);
@@ -91,6 +92,7 @@ const CurrencyScreen: React.FC = () => {
     const [selectedCity, setSelectedCity] = useState<CityKey>('Damascus');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchRates = async () => {
@@ -130,10 +132,10 @@ const CurrencyScreen: React.FC = () => {
         return (
             <div>
                 {/* Local Market Section */}
-                <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 mb-6">
-                    <h3 className="text-lg font-bold text-cyan-400 mb-3">أسعار السوق المحلية (تقريبية)</h3>
+                <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-4 mb-6">
+                    <h3 className="text-lg font-bold text-teal-500 dark:text-teal-400 mb-3">أسعار السوق المحلية (تقريبية)</h3>
                     <div className="mb-4">
-                        <label className="block text-sm text-slate-400 mb-2">اختر المدينة:</label>
+                        <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">اختر المدينة:</label>
                         <Select value={selectedCity} onChange={e => setSelectedCity(e.target.value as CityKey)}>
                             {Object.keys(localMarketRates).map(cityKey => (
                                 <option key={cityKey} value={cityKey}>{localMarketRates[cityKey as CityKey].name}</option>
@@ -141,35 +143,35 @@ const CurrencyScreen: React.FC = () => {
                         </Select>
                     </div>
                     <div className="space-y-3">
-                        <div className="flex justify-between items-center bg-slate-700/50 p-3 rounded-md">
+                        <div className="flex justify-between items-center bg-gray-100 dark:bg-zinc-800/50 p-3 rounded-md">
                             <div>
-                                <p className="font-bold">دولار أمريكي مقابل ليرة سورية</p>
-                                <p className="text-sm text-slate-400">USD / SYP</p>
+                                <p className="font-bold text-gray-900 dark:text-white">دولار أمريكي مقابل ليرة سورية</p>
+                                <p className="text-sm text-gray-500 dark:text-zinc-400">USD / SYP</p>
                             </div>
                             <div className="text-left">
-                                <p className="font-mono"><span className="text-xs text-slate-400">شراء: </span>{currentCityRates.USD_SYP.buy.toLocaleString()}</p>
-                                <p className="font-mono"><span className="text-xs text-slate-400">مبيع: </span>{currentCityRates.USD_SYP.sell.toLocaleString()}</p>
+                                <p className="font-mono"><span className="text-xs text-gray-500 dark:text-zinc-400">شراء: </span>{currentCityRates.USD_SYP.buy.toLocaleString()}</p>
+                                <p className="font-mono"><span className="text-xs text-gray-500 dark:text-zinc-400">مبيع: </span>{currentCityRates.USD_SYP.sell.toLocaleString()}</p>
                             </div>
                         </div>
-                        <div className="flex justify-between items-center bg-slate-700/50 p-3 rounded-md">
+                        <div className="flex justify-between items-center bg-gray-100 dark:bg-zinc-800/50 p-3 rounded-md">
                             <div>
-                                <p className="font-bold">ليرة تركية مقابل ليرة سورية</p>
-                                <p className="text-sm text-slate-400">TRY / SYP</p>
+                                <p className="font-bold text-gray-900 dark:text-white">ليرة تركية مقابل ليرة سورية</p>
+                                <p className="text-sm text-gray-500 dark:text-zinc-400">TRY / SYP</p>
                             </div>
                              <div className="text-left">
-                                <p className="font-mono"><span className="text-xs text-slate-400">شراء: </span>{currentCityRates.TRY_SYP.buy.toLocaleString()}</p>
-                                <p className="font-mono"><span className="text-xs text-slate-400">مبيع: </span>{currentCityRates.TRY_SYP.sell.toLocaleString()}</p>
+                                <p className="font-mono"><span className="text-xs text-gray-500 dark:text-zinc-400">شراء: </span>{currentCityRates.TRY_SYP.buy.toLocaleString()}</p>
+                                <p className="font-mono"><span className="text-xs text-gray-500 dark:text-zinc-400">مبيع: </span>{currentCityRates.TRY_SYP.sell.toLocaleString()}</p>
                             </div>
                         </div>
                     </div>
-                     <p className="text-xs text-slate-500 mt-3 text-center">هذه الأسعار إرشادية وقد تختلف في السوق الفعلي.</p>
+                     <p className="text-xs text-gray-500 dark:text-zinc-500 mt-3 text-center">هذه الأسعار إرشادية وقد تختلف في السوق الفعلي.</p>
                 </div>
 
                 {/* International Rates Section */}
-                <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
-                    <h3 className="text-lg font-bold text-cyan-400 mb-3">الأسعار العالمية</h3>
+                <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-4">
+                    <h3 className="text-lg font-bold text-teal-500 dark:text-teal-400 mb-3">الأسعار العالمية</h3>
                     <div className="mb-4">
-                        <label className="block text-sm text-slate-400 mb-2">العملة الأساسية:</label>
+                        <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">العملة الأساسية:</label>
                         <Select value={baseCurrency} onChange={e => setBaseCurrency(e.target.value)}>
                             {Object.keys(currencyNames).map(code => (
                                 <option key={code} value={code}>{currencyNames[code]} ({code})</option>
@@ -177,17 +179,17 @@ const CurrencyScreen: React.FC = () => {
                         </Select>
                     </div>
                      {ratesData && (
-                        <p className="text-sm text-slate-400 mb-4 text-center">
+                        <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4 text-center">
                             آخر تحديث: {new Date(ratesData.date).toLocaleDateString('ar-EG')}
                         </p>
                     )}
                     <div className="space-y-2">
                         {ratesData && targetCurrencies.map(currency => (
                             ratesData.rates[currency] && (
-                                <div key={currency} className="flex justify-between items-center bg-slate-700/50 p-3 rounded-md">
+                                <div key={currency} className="flex justify-between items-center bg-gray-100 dark:bg-zinc-800/50 p-3 rounded-md">
                                     <div>
-                                        <p className="font-bold">{currencyNames[currency]}</p>
-                                        <p className="text-sm text-slate-400">{baseCurrency} / {currency}</p>
+                                        <p className="font-bold text-gray-900 dark:text-white">{currencyNames[currency]}</p>
+                                        <p className="text-sm text-gray-500 dark:text-zinc-400">{baseCurrency} / {currency}</p>
                                     </div>
                                     <p className="font-mono text-lg">{ratesData.rates[currency]?.toFixed(4)}</p>
                                 </div>
@@ -200,11 +202,14 @@ const CurrencyScreen: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-900 text-white">
-            <header className="bg-slate-800/80 backdrop-blur-sm sticky top-0 z-10 border-b border-slate-700">
+        <div className="min-h-screen bg-gray-50 dark:bg-zinc-950">
+            <header className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-10 border-b border-gray-200 dark:border-zinc-800">
                 <div className="container mx-auto px-4">
-                    <div className="flex items-center h-16">
-                        <h1 className="text-xl font-bold">أسعار صرف العملات</h1>
+                    <div className="flex items-center h-16 relative">
+                        <button onClick={() => navigate(-1)} className="absolute right-0 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800">
+                            <BackIcon />
+                        </button>
+                        <h1 className="text-xl font-bold text-center w-full">أسعار صرف العملات</h1>
                     </div>
                 </div>
             </header>

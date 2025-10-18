@@ -64,6 +64,39 @@ export const getErrorMessage = (error: unknown): string => {
   return message;
 };
 
+// Simple time ago function
+export const timeAgo = (dateString: string) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+  let interval = seconds / 31536000;
+  if (interval > 1) {
+    const years = Math.floor(interval);
+    return `منذ ${years} ${years === 1 ? 'سنة' : 'سنوات'}`;
+  }
+  interval = seconds / 2592000;
+  if (interval > 1) {
+    const months = Math.floor(interval);
+    return `منذ ${months} ${months === 1 ? 'شهر' : 'أشهر'}`;
+  }
+  interval = seconds / 86400;
+  if (interval > 1) {
+    const days = Math.floor(interval);
+    return `منذ ${days} ${days === 1 ? 'يوم' : 'أيام'}`;
+  }
+  interval = seconds / 3600;
+  if (interval > 1) {
+    const hours = Math.floor(interval);
+    return `منذ ${hours} ${hours === 1 ? 'ساعة' : 'ساعات'}`;
+  }
+  interval = seconds / 60;
+  if (interval > 1) {
+    const minutes = Math.floor(interval);
+    return `منذ ${minutes} ${minutes === 1 ? 'دقيقة' : 'دقائق'}`;
+  }
+  return 'الآن';
+};
+
 
 // --- Interaction Feedback ---
 
@@ -112,6 +145,41 @@ export const playLikeSound = () => {
   oscillator.start(context.currentTime);
   oscillator.stop(context.currentTime + 0.15);
 };
+
+
+/**
+ * Plays a short chime for new notifications.
+ */
+export const playNotificationSound = () => {
+  const context = getAudioContext();
+  if (!context) return;
+  
+  if (context.state === 'suspended') {
+    context.resume();
+  }
+
+  const oscillator = context.createOscillator();
+  const gainNode = context.createGain();
+
+  // A two-tone chime sound
+  oscillator.type = 'sine';
+  gainNode.gain.setValueAtTime(0.2, context.currentTime);
+
+  // First tone
+  oscillator.frequency.setValueAtTime(1046.50, context.currentTime); // C6
+  gainNode.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.1);
+  
+  // Second tone
+  oscillator.frequency.setValueAtTime(1567.98, context.currentTime + 0.1); // G6
+  gainNode.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.25);
+
+  oscillator.connect(gainNode);
+  gainNode.connect(context.destination);
+
+  oscillator.start(context.currentTime);
+  oscillator.stop(context.currentTime + 0.3);
+};
+
 
 /**
  * Triggers a short haptic feedback vibration on supported devices.

@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -141,50 +140,49 @@ const AdminUserDetailScreen: React.FC = () => {
         }
     };
 
-    useEffect(() => {
-        const fetchUserData = async () => {
-            if (!userId) return;
-            setLoading(true);
-            setError(null);
-            try {
-                const { data, error } = await supabase.from('profiles').select('id, full_name, avatar_url, created_at, bio, status').eq('id', userId).single();
-                if (error) throw error;
-                setProfile(data as Profile);
+    const fetchUserData = useCallback(async () => {
+        if (!userId) return;
+        setLoading(true);
+        setError(null);
+        try {
+            const { data, error } = await supabase.from('profiles').select('id, full_name, avatar_url, created_at, bio, status').eq('id', userId).single();
+            if (error) throw error;
+            setProfile(data as Profile);
 
-                const [postsRes, commentsRes, likesRes, messagesRes] = await Promise.all([
-                    supabase.from('posts').select('*, profiles!user_id(full_name, avatar_url), groups(name)').eq('user_id', userId),
-                    supabase.from('comments').select('*, posts(id, content)').eq('user_id', userId),
-                    supabase.from('likes').select('created_at, posts(id, content, user_id, profiles!user_id(full_name))').eq('user_id', userId),
-                    supabase.from('messages').select('*, sender:sender_id(id, full_name, avatar_url), receiver:receiver_id(id, full_name, avatar_url)').or(`sender_id.eq.${userId},receiver_id.eq.${userId}`).order('created_at', { ascending: true })
-                ]);
-                
-                if (postsRes.error) throw postsRes.error;
-                if (commentsRes.error) throw commentsRes.error;
-                if (likesRes.error) throw likesRes.error;
-                if (messagesRes.error) throw messagesRes.error;
+            const [postsRes, commentsRes, likesRes, messagesRes] = await Promise.all([
+                supabase.from('posts').select('*, profiles!user_id(full_name, avatar_url), groups(name)').eq('user_id', userId),
+                supabase.from('comments').select('*, posts(id, content)').eq('user_id', userId),
+                supabase.from('likes').select('created_at, posts(id, content, user_id, profiles!user_id(full_name))').eq('user_id', userId),
+                supabase.from('messages').select('*, sender:sender_id(id, full_name, avatar_url), receiver:receiver_id(id, full_name, avatar_url)').or(`sender_id.eq.${userId},receiver_id.eq.${userId}`).order('created_at', { ascending: true })
+            ]);
+            
+            if (postsRes.error) throw postsRes.error;
+            if (commentsRes.error) throw commentsRes.error;
+            if (likesRes.error) throw likesRes.error;
+            if (messagesRes.error) throw messagesRes.error;
 
-                const combinedActivity = [
-                    ...(postsRes.data || []).map(p => ({ ...p, type: 'post' })),
-                    ...(commentsRes.data || []).map(c => ({ ...c, type: 'comment' })),
-                    ...(likesRes.data || []).map(l => ({ ...l, type: 'like' }))
-                ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            const combinedActivity = [
+                ...(postsRes.data || []).map(p => ({ ...p, type: 'post' })),
+                ...(commentsRes.data || []).map(c => ({ ...c, type: 'comment' })),
+                ...(likesRes.data || []).map(l => ({ ...l, type: 'like' }))
+            ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-                setActivity(combinedActivity as (AdminPost | AdminComment | AdminLike)[]);
-                setMessages(messagesRes.data as MessageWithProfiles[] || []);
+            setActivity(combinedActivity as (AdminPost | AdminComment | AdminLike)[]);
+            setMessages(messagesRes.data as MessageWithProfiles[] || []);
 
-            } catch (err) {
-                setError(getErrorMessage(err));
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchUserData();
+        } catch (err) {
+            setError(getErrorMessage(err));
+        } finally {
+            setLoading(false);
+        }
     }, [userId]);
+
+    useEffect(() => {
+        fetchUserData();
+    }, [fetchUserData]);
 
     const conversations = useMemo(() => {
         if (!userId) return {};
-        // FIX: Replaced `reduce` with a standard `for...of` loop to avoid TypeScript type inference issues.
-        // The previous implementation with `reduce` was causing the accumulator's type to be inferred as `unknown`.
         const conversationsMap: ConversationMap = {};
         for (const msg of messages) {
             const otherParticipantId = msg.sender_id === userId ? msg.receiver_id : msg.sender_id;
@@ -298,17 +296,25 @@ const AdminUserDetailScreen: React.FC = () => {
         </button>
     );
 
-    const TabButton: React.FC<{tab: Tab, label: string}> = ({ tab, label }) => (
+    const MainTabButton: React.FC<{tab: Tab, label: string}> = ({ tab, label }) => (
         <button onClick={() => setActiveTab(tab)} className={`px-4 py-2 text-sm font-semibold rounded-md transition-colors ${activeTab === tab ? 'bg-cyan-600 text-white' : 'text-slate-300 hover:bg-slate-700'}`}>
             {label}
         </button>
     );
     
-    const ActivityFilterButton: React.FC<{ children: React.ReactNode; onClick: () => void; active: boolean;}> = ({ children, onClick, active }) => (
-        <button onClick={onClick} className={`px-3 py-1.5 text-sm rounded-md transition-colors ${active ? 'bg-cyan-600 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-300'}`}>
-            {children}
+    const ActivitySubTabButton: React.FC<{ label: string; active: boolean; onClick: () => void }> = ({ label, active, onClick }) => (
+        <button
+            onClick={onClick}
+            className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                active
+                    ? 'border-cyan-500 text-cyan-400'
+                    : 'border-transparent text-slate-400 hover:border-slate-500 hover:text-slate-300'
+            }`}
+        >
+            {label}
         </button>
     );
+
 
     if (loading) return <div className="flex h-screen w-full items-center justify-center"><BackButton /><Spinner /></div>;
     if (error) return <div className="flex h-screen w-full items-center justify-center text-red-400 p-4"><BackButton />{error}</div>;
@@ -327,10 +333,10 @@ const AdminUserDetailScreen: React.FC = () => {
                     )}
                     
                     <div className="bg-slate-800 p-1 rounded-lg flex gap-1 my-6 border border-slate-700 justify-center flex-wrap">
-                        <TabButton tab="profile" label="الملف الشخصي" />
-                        <TabButton tab="activity" label="النشاط" />
-                        <TabButton tab="messages" label="الرسائل" />
-                        <TabButton tab="actions" label="الإجراءات" />
+                        <MainTabButton tab="profile" label="الملف الشخصي" />
+                        <MainTabButton tab="activity" label="النشاط" />
+                        <MainTabButton tab="messages" label="الرسائل" />
+                        <MainTabButton tab="actions" label="الإجراءات" />
                     </div>
 
                     <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 min-h-[300px]">
@@ -350,15 +356,15 @@ const AdminUserDetailScreen: React.FC = () => {
                         )}
                         {activeTab === 'activity' && (
                              <div>
-                                <h2 className="text-xl font-bold text-cyan-400 mb-4">سجل النشاط ({filteredActivity.length})</h2>
+                                <h2 className="text-xl font-bold text-cyan-400 mb-2">سجل النشاط ({filteredActivity.length})</h2>
+                                <div className="mb-4 border-b border-slate-700 flex">
+                                    <ActivitySubTabButton label="الكل" active={activityFilter === 'all'} onClick={() => setActivityFilter('all')} />
+                                    <ActivitySubTabButton label="المنشورات" active={activityFilter === 'post'} onClick={() => setActivityFilter('post')} />
+                                    <ActivitySubTabButton label="التعليقات" active={activityFilter === 'comment'} onClick={() => setActivityFilter('comment')} />
+                                    <ActivitySubTabButton label="الإعجابات" active={activityFilter === 'like'} onClick={() => setActivityFilter('like')} />
+                                </div>
+
                                 <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700 mb-4 space-y-4">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <p className="text-sm font-semibold text-slate-400">فلترة حسب النوع:</p>
-                                        <ActivityFilterButton active={activityFilter === 'all'} onClick={() => setActivityFilter('all')}>الكل</ActivityFilterButton>
-                                        <ActivityFilterButton active={activityFilter === 'post'} onClick={() => setActivityFilter('post')}>المنشورات</ActivityFilterButton>
-                                        <ActivityFilterButton active={activityFilter === 'comment'} onClick={() => setActivityFilter('comment')}>التعليقات</ActivityFilterButton>
-                                        <ActivityFilterButton active={activityFilter === 'like'} onClick={() => setActivityFilter('like')}>الإعجابات</ActivityFilterButton>
-                                    </div>
                                     <div className="flex flex-wrap items-end gap-3">
                                         <div className="flex-1 min-w-[150px]">
                                             <label className="text-xs text-slate-400 mb-1 block">من تاريخ</label>

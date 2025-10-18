@@ -1,5 +1,7 @@
 
 
+export type PrivacySetting = 'public' | 'followers' | 'private';
+
 export interface Profile {
   id: string;
   full_name: string | null;
@@ -7,11 +9,37 @@ export interface Profile {
   bio: string | null;
   created_at: string;
   status: 'active' | 'suspended' | 'banned' | null;
+  cover_photo_url: string | null;
+
+  // New details fields
+  gender: 'male' | 'female' | 'other' | null;
+  place_of_origin: string | null;
+  website: string | null;
+  contact_info: string | null;
+  education_level: string | null;
+  date_of_birth: string | null;
+
+  // Privacy settings for new fields
+  gender_privacy: PrivacySetting | null;
+  place_of_origin_privacy: PrivacySetting | null;
+  website_privacy: PrivacySetting | null;
+  contact_info_privacy: PrivacySetting | null;
+  education_level_privacy: PrivacySetting | null;
+  date_of_birth_privacy: PrivacySetting | null;
+  
+  // Chat Settings
+  message_privacy: 'public' | 'followers' | 'private' | null;
+  read_receipts_enabled: boolean | null;
+
+  // Blocking
+  blocked_users: string[];
+  
 }
 
 export interface PostProfile {
   full_name: string | null;
   avatar_url: string | null;
+  bio: string | null;
 }
 
 export interface Like {
@@ -25,15 +53,19 @@ export interface Comment {
   user_id: string;
   post_id: string;
   profiles: PostProfile | null;
+  parent_comment_id?: string | null;
+  replies?: Comment[];
 }
 
 export interface Post {
   id: string;
   content: string;
   image_url: string | null;
+  video_url: string | null;
   created_at: string;
   user_id: string;
   group_id: string | null;
+  is_pinned?: boolean;
   profiles: PostProfile | null;
   groups: { name: string } | null;
   likes: Like[];
@@ -72,6 +104,8 @@ export interface ProductComment {
   user_id: string;
   product_id: string;
   profiles: PostProfile | null;
+  parent_comment_id?: string | null;
+  replies?: ProductComment[];
 }
 
 export interface Product {
@@ -99,6 +133,7 @@ export interface Message {
   image_url: string | null;
   audio_url: string | null;
   read: boolean;
+  deleted_for: string[] | null;
 }
 
 export interface Conversation {
@@ -131,7 +166,7 @@ export interface GroupPost extends Post {
     group_id: string;
 }
 
-export type NotificationType = 'like_post' | 'comment_post' | 'new_message' | 'like_product' | 'comment_product' | 'new_store_follower' | 'new_store_rating' | 'new_follower' | 'like_rental_post' | 'comment_rental_post' | 'admin_notification';
+export type NotificationType = 'like_post' | 'comment_post' | 'reply_comment' | 'new_message' | 'like_product' | 'comment_product' | 'reply_product_comment' | 'new_store_follower' | 'new_store_rating' | 'new_follower' | 'like_rental_post' | 'comment_rental_post' | 'reply_rental_comment' | 'admin_notification' | 'support_ticket_reply';
 
 export interface Notification {
     id: string;
@@ -162,6 +197,8 @@ export interface RentalPostComment {
   user_id: string;
   post_id: string; // post_id refers to rental_post_id
   profiles: PostProfile | null;
+  parent_comment_id?: string | null;
+  replies?: RentalPostComment[];
 }
 
 export type PaymentTerm = 'monthly' | 'quarterly' | 'semi_annually';
@@ -186,4 +223,27 @@ export interface RentalPost {
   profiles: PostProfile | null;
   rental_post_likes: RentalPostLike[];
   rental_post_comments: [{ count: number }];
+}
+
+export interface SupportTicket {
+  id: string;
+  created_at: string;
+  user_id: string;
+  problem_description: string;
+  screenshot_urls: string[] | null;
+  status: 'PENDING' | 'RESOLVED';
+  // Joined data
+  profiles: { full_name: string; avatar_url: string | null } | null; // reporter profile
+  unread_admin_replies?: number;
+}
+
+export interface SupportTicketReply {
+  id: string;
+  created_at: string;
+  ticket_id: string;
+  user_id: string; // author_id
+  content: string | null;
+  image_urls: string[] | null;
+  // Joined data
+  profiles: { full_name: string; avatar_url: string | null; id: string } | null; // author profile
 }

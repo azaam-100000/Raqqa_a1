@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Product } from '../types';
@@ -7,9 +5,9 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { getErrorMessage, playLikeSound, triggerHapticFeedback } from '../utils/errors';
 
-const HeartIcon = ({ filled }: { filled: boolean }) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`h-5 w-5 transform transition-all duration-300 ease-out group-hover:scale-125 ${ filled ? 'text-red-500 scale-110' : 'text-slate-400' }`}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg> );
-const CommentIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-slate-400 group-hover:text-cyan-400"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg> );
-const ShareIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-slate-400 group-hover:text-cyan-400"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg> );
+const HeartIcon = ({ filled }: { filled: boolean }) => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`h-6 w-6 transform transition-all duration-300 ease-out group-hover:scale-125 ${ filled ? 'text-lime-400 scale-110' : 'text-gray-500 dark:text-zinc-400' }`}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg> );
+const CommentIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg> );
+const ShareIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg> );
 const TrashIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> );
 
 interface ProductCardProps {
@@ -120,7 +118,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, isOwner, onProductDe
   const commentCount = product.product_comments?.[0]?.count || 0;
 
   return (
-    <Link to={`/product/${product.id}`} className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden group flex flex-col relative transition-all hover:border-cyan-500 hover:shadow-lg">
+    <Link to={`/product/${product.id}`} className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg overflow-hidden group flex flex-col relative transition-all hover:border-teal-500 hover:shadow-lg">
        {isOwner && (
           <button 
             onClick={handleDelete} 
@@ -133,25 +131,30 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, isOwner, onProductDe
               {deleting ? <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" /> : <TrashIcon />}
           </button>
        )}
-      <div className="aspect-square w-full bg-slate-700 overflow-hidden">
+      <div className="aspect-square w-full bg-gray-100 dark:bg-zinc-800 overflow-hidden">
         {imageUrl && <img src={imageUrl} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />}
       </div>
       <div className="p-3 flex-grow flex flex-col">
-        <h3 className="font-bold text-white truncate flex-grow">{product.name}</h3>
-        <p className="text-sm text-cyan-400 font-semibold mt-1">{product.price.toFixed(2)} $</p>
+        <h3 className="font-bold text-gray-900 dark:text-zinc-100 truncate flex-grow">{product.name}</h3>
+        <p className="text-sm text-teal-500 font-semibold mt-1">{product.price.toFixed(2)} $</p>
       </div>
-       <div className="border-t border-slate-700 p-2 flex justify-around items-center text-sm">
-           <button onClick={handleLikeToggle} className="flex items-center gap-1.5 group transform transition-transform active:scale-125">
+       <div className="border-t border-gray-200 dark:border-zinc-800 pt-2 flex justify-around items-center text-gray-500 dark:text-zinc-400">
+           <button 
+                onClick={handleLikeToggle} 
+                className="flex items-center gap-2 group p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-zinc-900 transform transition-transform active:scale-125"
+                aria-label={isLiked ? 'إلغاء الإعجاب' : 'إعجاب'}
+            >
                 <HeartIcon filled={isLiked} />
-                <span className="text-slate-400 group-hover:text-red-400">{likeCount}</span>
-           </button>
-            <div className="flex items-center gap-1.5 group cursor-pointer" onClick={(e) => { e.preventDefault(); navigate(`/product/${product.id}`); }}>
-               <CommentIcon />
-                <span className="text-slate-400 group-hover:text-cyan-400">{commentCount}</span>
-           </div>
-            <button onClick={handleShare} className="flex items-center gap-1.5 group">
-               <ShareIcon />
-           </button>
+                <span className="text-sm">{likeCount}</span>
+            </button>
+            <Link to={`/product/${product.id}`} className="flex items-center gap-2 group hover:text-teal-400 text-sm transition-colors p-2 rounded-md">
+                <CommentIcon />
+                <span>{commentCount}</span>
+            </Link>
+            <button onClick={handleShare} className="flex items-center gap-2 group hover:text-teal-400 text-sm transition-colors p-2 rounded-md">
+                <ShareIcon />
+                <span>مشاركة</span>
+            </button>
        </div>
     </Link>
   );

@@ -76,7 +76,7 @@ const VerificationScreen: React.FC = () => {
                 onChange={e => handleChange(e.target, index)}
                 onKeyDown={e => handleKeyDown(e, index)}
                 onFocus={e => e.target.select()}
-                className="w-12 h-14 text-center text-2xl font-bold bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                className="w-12 h-14 text-center text-2xl font-bold bg-zinc-800 border border-zinc-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             );
           })}

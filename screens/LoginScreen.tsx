@@ -15,6 +15,7 @@ const GoogleIcon = () => (
     </svg>
 );
 
+
 const LoginScreen: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -97,7 +98,7 @@ const LoginScreen: React.FC = () => {
                   type="button"
                   onClick={handleResend}
                   disabled={loading}
-                  className="text-sm text-cyan-400 hover:text-cyan-500 disabled:opacity-50"
+                  className="text-sm text-teal-400 hover:text-teal-500 disabled:opacity-50"
                 >
                     لم تستلم الرمز؟ إعادة إرسال بريد التفعيل
                 </button>
@@ -108,21 +109,21 @@ const LoginScreen: React.FC = () => {
       </form>
        <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-slate-700"></div>
+            <div className="w-full border-t border-zinc-700"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="bg-slate-800 px-2 text-slate-500">أو</span>
+            <span className="bg-zinc-900 px-2 text-zinc-500">أو</span>
           </div>
         </div>
-        <div>
+        <div className="space-y-4">
             <Button onClick={handleGoogleSignIn} loading={loading} variant="google">
                 <GoogleIcon />
                 <span>المتابعة باستخدام جوجل</span>
             </Button>
         </div>
-      <p className="mt-6 text-center text-sm text-slate-400">
+      <p className="mt-6 text-center text-sm text-zinc-400">
         ليس لديك حساب؟{' '}
-        <Link to="/signup" className="font-medium text-cyan-400 hover:text-cyan-500">
+        <Link to="/signup" className="font-medium text-teal-400 hover:text-teal-500">
           أنشئ حساباً جديداً
         </Link>
       </p>

@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../services/supabase';
@@ -60,36 +59,48 @@ const RentalDetailScreen: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
-            // Fetch post
-            const { data: postData, error: postError } = await supabase
-                .from('rental_posts')
-                .select('*')
-                .eq('id', rentalId)
-                .single();
+            const { data: postData, error: postError } = await supabase.from('rental_posts').select('*').eq('id', rentalId).single();
             if (postError) throw postError;
 
-            // Fetch owner profile
-            const { data: profileData, error: profileError } = await supabase
-                .from('profiles')
-                .select('full_name, avatar_url')
-                .eq('id', postData.user_id)
-                .single();
-            if (profileError) console.warn('Could not fetch owner profile');
+            const { data: profileData } = await supabase.from('profiles').select('full_name, avatar_url').eq('id', postData.user_id).single();
+            setPost({ ...postData, profiles: profileData });
 
-            // Fetch comments
-            const { data: commentsData, error: commentsError } = await supabase
-                .from('rental_post_comments')
-                .select('*, profiles(id, full_name, avatar_url)')
-                .eq('post_id', rentalId)
-                .order('created_at', { ascending: true });
+            const { data: commentsData, error: commentsError } = await supabase.from('rental_post_comments').select('*').eq('post_id', rentalId).order('created_at', { ascending: true });
             if (commentsError) throw commentsError;
             
-            setPost({ ...postData, profiles: profileData });
-            setComments(commentsData as any[]);
-            
-            const publicUrls = (postData.image_urls || []).map((url: string) => {
-                return supabase.storage.from('uploads').getPublicUrl(url).data.publicUrl;
-            });
+            if (!commentsData || commentsData.length === 0) {
+                setComments([]);
+            } else {
+                 const userIds = [...new Set(commentsData.map(c => c.user_id))];
+                 const { data: profilesData, error: profilesError } = await supabase
+                    .from('profiles')
+                    .select('id, full_name, avatar_url')
+                    .in('id', userIds);
+                if (profilesError) throw profilesError;
+
+                const profilesMap = new Map((profilesData || []).map(p => [p.id, p]));
+                const commentsWithProfiles = commentsData.map(comment => ({
+                    ...comment,
+                    profiles: profilesMap.get(comment.user_id) || null
+                }));
+
+                const commentsMap = new Map();
+                const topLevelComments: RentalPostComment[] = [];
+                (commentsWithProfiles as any[] || []).forEach(comment => {
+                    comment.replies = [];
+                    commentsMap.set(comment.id, comment);
+                });
+                (commentsWithProfiles as any[] || []).forEach(comment => {
+                    if (comment.parent_comment_id && commentsMap.has(comment.parent_comment_id)) {
+                        commentsMap.get(comment.parent_comment_id).replies.push(comment);
+                    } else {
+                        topLevelComments.push(comment);
+                    }
+                });
+                setComments(topLevelComments);
+            }
+
+            const publicUrls = (postData.image_urls || []).map((url: string) => supabase.storage.from('uploads').getPublicUrl(url).data.publicUrl);
             setImageUrls(publicUrls);
 
         } catch (err) {
@@ -103,14 +114,8 @@ const RentalDetailScreen: React.FC = () => {
         fetchPostData();
     }, [fetchPostData]);
 
-    const handleCommentCreated = (newComment: RentalPostComment) => {
-        setComments(current => [...current, newComment]);
-    };
-    const handleCommentDeleted = (commentId: string) => {
-        setComments(current => current.filter(c => c.id !== commentId));
-    };
-    const handleCommentUpdated = (updatedComment: RentalPostComment) => {
-        setComments(current => current.map(c => c.id === updatedComment.id ? updatedComment : c));
+    const onCommentAction = () => {
+        fetchPostData();
     };
     
     const handleDeletePost = async () => {
@@ -149,21 +154,21 @@ const RentalDetailScreen: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-900 text-white">
-            <header className="bg-slate-800/80 backdrop-blur-sm sticky top-0 z-10 border-b border-slate-700">
+        <div className="min-h-screen">
+            <header className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-lg sticky top-0 z-10 border-b border-gray-200 dark:border-zinc-800">
                 <div className="container mx-auto px-4">
                     <div className="flex items-center h-16 relative">
-                        <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-slate-700">
+                        <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800">
                             <BackIcon />
                         </button>
                         <h1 className="text-xl font-bold text-center w-full truncate px-12">تفاصيل العرض</h1>
                          {(isOwner || isAdmin) && (
                             <div className="absolute left-2" ref={menuRef}>
-                                <button onClick={() => setIsMenuOpen(p => !p)} className="p-2 rounded-full hover:bg-slate-700"><MoreIcon /></button>
+                                <button onClick={() => setIsMenuOpen(p => !p)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800"><MoreIcon /></button>
                                 {isMenuOpen && (
-                                    <div className="absolute left-0 mt-2 w-48 bg-slate-700 border border-slate-600 rounded-md shadow-lg z-10">
-                                        <Link to={`/rental/${rentalId}/edit`} className="block w-full text-right px-4 py-2 text-sm text-slate-300 hover:bg-slate-600">تعديل</Link>
-                                        <button onClick={handleDeletePost} className={`block w-full text-right px-4 py-2 text-sm hover:bg-slate-600 transition-colors ${confirmingDelete ? 'bg-red-700 text-white' : 'text-red-400'}`}>
+                                    <div className="absolute left-0 mt-2 w-48 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-md shadow-lg z-10">
+                                        <Link to={`/rental/${rentalId}/edit`} className="block w-full text-right px-4 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700">تعديل</Link>
+                                        <button onClick={handleDeletePost} className={`block w-full text-right px-4 py-2 text-sm text-red-500 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors ${confirmingDelete ? 'bg-red-600 text-white' : ''}`}>
                                             {confirmingDelete ? 'تأكيد الحذف؟' : 'حذف العرض'}
                                         </button>
                                     </div>
@@ -180,7 +185,7 @@ const RentalDetailScreen: React.FC = () => {
                     {post && (
                         <div>
                             {imageUrls.length > 0 && (
-                                <div className="relative aspect-video w-full bg-slate-800 rounded-lg overflow-hidden mb-6 border border-slate-700">
+                                <div className="relative aspect-video w-full bg-gray-200 dark:bg-zinc-800 rounded-lg overflow-hidden mb-6 border border-gray-200 dark:border-zinc-700">
                                     <img src={imageUrls[currentImageIndex]} alt={`Rental property ${currentImageIndex + 1}`} className="w-full h-full object-contain" />
                                     {imageUrls.length > 1 && (
                                         <>
@@ -191,44 +196,44 @@ const RentalDetailScreen: React.FC = () => {
                                     )}
                                 </div>
                             )}
-                            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-6">
+                            <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-6 mb-6">
                                 <div className="flex justify-between items-start gap-4">
                                     <div>
                                         <h2 className="text-2xl font-bold">{post.address}</h2>
-                                        <p className="text-slate-400">{post.region}</p>
+                                        <p className="text-gray-500 dark:text-zinc-400">{post.region}</p>
                                     </div>
-                                    <div className="text-2xl font-bold text-cyan-400 whitespace-nowrap">{post.rent_amount.toLocaleString()}$ / { paymentTermText[post.payment_term] }</div>
+                                    <div className="text-2xl font-bold text-teal-500 whitespace-nowrap">{post.rent_amount.toLocaleString()}$ / { paymentTermText[post.payment_term] }</div>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-4 border-t border-slate-700 text-slate-300">
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-4 border-t border-gray-200 dark:border-zinc-800 text-gray-700 dark:text-zinc-300">
                                     <div className="flex items-center gap-2"><BedIcon /> <span>{post.room_count} غرف</span></div>
                                     <div className="flex items-center gap-2"><MapPinIcon /> <span>{post.street_name}</span></div>
                                 </div>
-                                {post.map_link && <a href={post.map_link} target="_blank" rel="noopener noreferrer" className="inline-block mt-4 text-cyan-400 hover:text-cyan-500 font-semibold">عرض على الخريطة &rarr;</a>}
-                                <div className="mt-4 pt-4 border-t border-slate-700">
-                                     <h3 className="text-md font-semibold text-slate-300">مقدم من:</h3>
+                                {post.map_link && <a href={post.map_link} target="_blank" rel="noopener noreferrer" className="inline-block mt-4 text-teal-500 hover:text-teal-600 font-semibold">عرض على الخريطة &rarr;</a>}
+                                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-zinc-800">
+                                     <h3 className="text-md font-semibold text-gray-600 dark:text-zinc-300">مقدم من:</h3>
                                      <Link to={`/user/${post.user_id}`} className="flex items-center gap-3 mt-2">
                                         <Avatar url={post.profiles?.avatar_url} size={40} userId={post.user_id} showStatus={true} />
                                         <div>
-                                            <p className="font-bold text-white hover:underline">{post.profiles?.full_name}</p>
+                                            <p className="font-bold text-gray-900 dark:text-zinc-100 hover:underline">{post.profiles?.full_name}</p>
                                         </div>
                                      </Link>
                                 </div>
                                 {user && user.id !== post.user_id && (
-                                    <div className="mt-4 pt-4 border-t border-slate-700">
+                                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-zinc-800">
                                         <Button onClick={() => navigate(`/chat/${post.user_id}`)} className="w-full">مراسلة المالك</Button>
                                     </div>
                                 )}
                             </div>
-                            <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+                            <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-6">
                                 <h3 className="text-xl font-bold mb-4">التعليقات</h3>
-                                {user && <CreateRentalCommentForm postId={post.id} postOwnerId={post.user_id} onCommentCreated={handleCommentCreated} />}
+                                {user && <CreateRentalCommentForm postId={post.id} postOwnerId={post.user_id} onCommentCreated={onCommentAction} />}
                                 <div className="space-y-4 mt-4">
                                     {comments.length > 0 ? (
                                         comments.map(comment => (
-                                            <RentalCommentCard key={comment.id} comment={comment} onCommentDeleted={handleCommentDeleted} onCommentUpdated={handleCommentUpdated} />
+                                            <RentalCommentCard key={comment.id} comment={comment} postOwnerId={post.user_id} onCommentCreated={onCommentAction} onCommentDeleted={onCommentAction} onCommentUpdated={onCommentAction} />
                                         ))
                                     ) : (
-                                        <p className="text-slate-400 text-center py-4">لا توجد تعليقات. كن أول من يعلق!</p>
+                                        <p className="text-gray-500 dark:text-zinc-400 text-center py-4">لا توجد تعليقات. كن أول من يعلق!</p>
                                     )}
                                 </div>
                             </div>

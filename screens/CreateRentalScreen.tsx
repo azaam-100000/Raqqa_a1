@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
@@ -63,7 +61,12 @@ const CreateRentalScreen: React.FC = () => {
                 imageFiles.map(async (file) => {
                     const fileExt = file.name.split('.').pop();
                     const fileName = `${user.id}/rentals/${Date.now()}-${Math.random()}.${fileExt}`;
-                    const { error: uploadError } = await supabase.storage.from('uploads').upload(fileName, file);
+                    const { error: uploadError } = await supabase.storage
+                        .from('uploads')
+                        .upload(fileName, file, {
+                            contentType: file.type,
+                            upsert: true,
+                        });
                     if (uploadError) throw uploadError;
                     return fileName;
                 })
@@ -102,11 +105,11 @@ const CreateRentalScreen: React.FC = () => {
     };
     
     return (
-        <div className="min-h-screen bg-slate-900 text-white">
-            <header className="bg-slate-800/80 backdrop-blur-sm sticky top-0 z-10 border-b border-slate-700">
+        <div className="min-h-screen">
+            <header className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-lg sticky top-0 z-10 border-b border-gray-200 dark:border-zinc-800">
                 <div className="container mx-auto px-4">
                     <div className="flex items-center h-16 relative">
-                        <button onClick={() => navigate(-1)} className="absolute right-0 p-2 rounded-full hover:bg-slate-700">
+                        <button onClick={() => navigate(-1)} className="absolute right-0 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800">
                             <BackIcon />
                         </button>
                         <h1 className="text-xl font-bold text-center w-full">إضافة عرض إيجار جديد</h1>
@@ -115,20 +118,20 @@ const CreateRentalScreen: React.FC = () => {
             </header>
             <main className="container mx-auto px-4 py-6">
                 <div className="max-w-2xl mx-auto">
-                    <form onSubmit={handleSubmit} className="bg-slate-800 border border-slate-700 rounded-lg p-6 space-y-6">
+                    <form onSubmit={handleSubmit} className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-6 space-y-6">
                         <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">صور المنزل (مطلوبة)</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-2">صور المنزل (مطلوبة)</label>
                             <MultiImageInput onFilesSelect={setImageFiles} />
                         </div>
 
-                        <div className="space-y-4 pt-4 border-t border-slate-700">
+                        <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-zinc-800">
                             <h3 className="text-lg font-semibold">المعلومات الأساسية</h3>
                             <LabeledInput label="المنطقة" value={region} onChange={e => setRegion(e.target.value)} required />
                             <LabeledInput label="العنوان" value={address} onChange={e => setAddress(e.target.value)} required />
                             <LabeledInput label="اسم الشارع" value={streetName} onChange={e => setStreetName(e.target.value)} required />
                         </div>
 
-                        <div className="space-y-4 pt-4 border-t border-slate-700">
+                        <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-zinc-800">
                              <h3 className="text-lg font-semibold">تفاصيل العقار</h3>
                              <LabeledInput label="عدد الغرف" type="number" value={roomCount} onChange={e => setRoomCount(e.target.value)} required />
                              <LabeledSelect label="حالة البيت" value={condition} onChange={e => setCondition(e.target.value)} required>
@@ -139,7 +142,7 @@ const CreateRentalScreen: React.FC = () => {
                              </LabeledSelect>
                         </div>
                         
-                        <div className="space-y-4 pt-4 border-t border-slate-700">
+                        <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-zinc-800">
                              <h3 className="text-lg font-semibold">التفاصيل المالية</h3>
                              <LabeledInput label="أجور البيت للشهر ($)" type="number" value={rentAmount} onChange={e => setRentAmount(e.target.value)} required />
                              <LabeledSelect label="نظام الدفع" value={paymentTerm} onChange={e => setPaymentTerm(e.target.value as PaymentTerm)} required>
@@ -149,9 +152,9 @@ const CreateRentalScreen: React.FC = () => {
                              </LabeledSelect>
                         </div>
                         
-                        <div className="space-y-4 pt-4 border-t border-slate-700">
+                        <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-zinc-800">
                              <h3 className="text-lg font-semibold">الموقع على الخريطة (اختياري)</h3>
-                             <p className="text-sm text-slate-400 bg-slate-700/50 p-3 rounded-md">
+                             <p className="text-sm text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-800/50 p-3 rounded-md">
                                 <strong>للحصول على الإحداثيات:</strong>
                                 <br />1. افتح تطبيق خرائط جوجل.
                                 <br />2. اضغط مطولاً على الموقع المطلوب.
@@ -161,7 +164,7 @@ const CreateRentalScreen: React.FC = () => {
                                 <LabeledInput label="خط العرض (Latitude)" type="number" step="any" value={latitude} onChange={e => setLatitude(e.target.value)} placeholder="مثال: 35.9531" />
                                 <LabeledInput label="خط الطول (Longitude)" type="number" step="any" value={longitude} onChange={e => setLongitude(e.target.value)} placeholder="مثال: 39.0192" />
                              </div>
-                             <LabeledInput label="رابط الموقع (يتم إنشاؤه تلقائياً)" type="url" value={mapLink} readOnly disabled className="!bg-slate-700 cursor-not-allowed" />
+                             <LabeledInput label="رابط الموقع (يتم إنشاؤه تلقائياً)" type="url" value={mapLink} readOnly disabled className="!bg-gray-200 dark:!bg-zinc-800 cursor-not-allowed" />
                         </div>
                         
                         {error && <p className="text-red-400 text-sm text-center">{error}</p>}
@@ -180,7 +183,7 @@ const CreateRentalScreen: React.FC = () => {
 // Helper components for labeled inputs
 const Labeled: React.FC<{label: string, children: React.ReactNode}> = ({ label, children }) => (
     <div>
-        <label className="block text-sm font-medium text-slate-300 mb-2">{label}</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-2">{label}</label>
         {children}
     </div>
 );
