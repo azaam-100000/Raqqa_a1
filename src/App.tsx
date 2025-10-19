@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 // FIX: Added missing 'useNavigate' hook to imports from react-router-dom.
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
