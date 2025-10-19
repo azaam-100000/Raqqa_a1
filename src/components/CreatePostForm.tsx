@@ -309,6 +309,7 @@ const CreatePostForm: React.FC<CreatePostFormProps> = ({ groupId, onPostCreated,
       const { data: groupData, error: groupError } = groupId ? await supabase.from('groups').select('name').eq('id', groupId).single() : { data: null, error: null };
       if (groupError) console.warn('Could not fetch group name for new post', groupError.message);
       
+      // FIX: Added missing 'bio' field to conform to the PostProfile type within the Post type.
       const newFullPost: Post = {
         ...insertedPost,
         profiles: {

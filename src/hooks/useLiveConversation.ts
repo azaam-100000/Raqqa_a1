@@ -65,9 +65,9 @@ export const useLiveConversation = () => {
         sources: new Set(),
     });
 
+    // FIX: Per @google/genai guidelines, API key must come from process.env.API_KEY directly.
+    // The vite.config.ts ensures this is available in the browser context.
     useEffect(() => {
-        // Safely check for API key to prevent crashes when process.env is not defined.
-        // FIX: Per @google/genai guidelines, API key must come from process.env.API_KEY.
         const apiKey = process.env.API_KEY;
 
         if (apiKey) {
@@ -212,6 +212,7 @@ export const useLiveConversation = () => {
         setIsListening(false);
         setIsLoading(false);
 
+        // FIX: Added try/catch to safely close the session to prevent unhandled promise rejections.
         if (sessionPromiseRef.current) {
             try {
                 const session = await sessionPromiseRef.current;
@@ -237,6 +238,7 @@ export const useLiveConversation = () => {
             mediaStreamRef.current = null;
         }
         
+        // FIX: Added .catch() to safely close audio contexts.
         if (audioContextRef.current) {
             await audioContextRef.current.input.close().catch(e => console.warn(e));
             await audioContextRef.current.output.close().catch(e => console.warn(e));
