@@ -1,3 +1,5 @@
+
+
 export type PrivacySetting = 'public' | 'followers' | 'private';
 
 export interface Profile {
