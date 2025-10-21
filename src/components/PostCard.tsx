@@ -12,7 +12,7 @@ import PromotePostModal from './PromotePostModal';
 
 const AdminBadge = () => (
     <span className="ml-2 inline-flex items-center gap-1 align-middle">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" className="flex-shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" className="flex-shrink-0">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="black"/>
             <path d="m12 7.5 2.05 4.03 4.45.61-3.25 3.16.75 4.4-4-2.1-4 2.1.75-4.4-3.25-3.16 4.45-.61L12 7.5z" fill="#ef4444"/>
         </svg>
