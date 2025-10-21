@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-// FIX: Added missing 'useNavigate' hook to imports from react-router-dom.
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-// FIX: 'AuthProvider' is exported from 'contexts/AuthContext', not 'hooks/useAuth'.
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import ProtectedRoute from './components/ProtectedRoute';

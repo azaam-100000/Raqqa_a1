@@ -217,11 +217,9 @@ const CreatePostForm: React.FC<CreatePostFormProps> = ({ groupId, onPostCreated,
     setAiError(null);
 
     try {
-      // FIX: Per @google/genai guidelines, API key must come from process.env.API_KEY.
       if (!process.env.API_KEY) {
         throw new Error("مفتاح API الخاص بـ Gemini غير متوفر.");
       }
-      // FIX: Per @google/genai guidelines, API key must come from process.env.API_KEY.
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
       const response = await ai.models.generateContent({
@@ -309,7 +307,6 @@ const CreatePostForm: React.FC<CreatePostFormProps> = ({ groupId, onPostCreated,
       const { data: groupData, error: groupError } = groupId ? await supabase.from('groups').select('name').eq('id', groupId).single() : { data: null, error: null };
       if (groupError) console.warn('Could not fetch group name for new post', groupError.message);
       
-      // FIX: Added missing 'bio' field to conform to the PostProfile type within the Post type.
       const newFullPost: Post = {
         ...insertedPost,
         profiles: {

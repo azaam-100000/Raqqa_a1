@@ -64,7 +64,6 @@ const MoreIcon = () => (
 
 const FlagIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg> );
 const MegaphoneIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>;
-{/* Fix: Corrected malformed viewBox attribute in PinIcon SVG */}
 const PinIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 17v5" /><path d="M15 9.35a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Z" /><path d="M9.65 9.35 4 15l-1.65-1.65a2.5 2.5 0 0 1 0-3.5L9.65 2.5a2.5 2.5 0 0 1 3.5 0l7.15 7.15a2.5 2.5 0 0 1 0 3.5L18 15l-5.65-5.65Z" /></svg> );
 
 

@@ -1,5 +1,3 @@
-
-
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI, LiveSession, LiveServerMessage, Modality, Blob } from "@google/genai";
 
@@ -67,15 +65,12 @@ export const useLiveConversation = () => {
         sources: new Set(),
     });
 
-    // FIX: Per @google/genai guidelines, API key must come from process.env.API_KEY directly.
-    // The vite.config.ts ensures this is available in the browser context.
     useEffect(() => {
         const apiKey = process.env.API_KEY;
 
         if (apiKey) {
-            aiRef.current = new GoogleGenAI({ apiKey: apiKey });
+            aiRef.current = new GoogleGenAI({ apiKey });
         } else {
-            // FIX: Updated console error to reflect use of process.env.
             console.error("Gemini API key not found in process.env.API_KEY.");
             setError("ميزة المساعد الصوتي معطلة لعدم توفر مفتاح الواجهة البرمجية (API Key).");
         }
@@ -214,7 +209,6 @@ export const useLiveConversation = () => {
         setIsListening(false);
         setIsLoading(false);
 
-        // FIX: Added try/catch to safely close the session to prevent unhandled promise rejections.
         if (sessionPromiseRef.current) {
             try {
                 const session = await sessionPromiseRef.current;
@@ -240,10 +234,9 @@ export const useLiveConversation = () => {
             mediaStreamRef.current = null;
         }
         
-        // FIX: Added .catch() to safely close audio contexts.
         if (audioContextRef.current) {
-            await audioContextRef.current.input.close().catch(e => console.warn(e));
-            await audioContextRef.current.output.close().catch(e => console.warn(e));
+            await audioContextRef.current.input.close().catch(e => console.warn("Error closing input audio context:", e));
+            await audioContextRef.current.output.close().catch(e => console.warn("Error closing output audio context:", e));
             audioContextRef.current = null;
         }
         
