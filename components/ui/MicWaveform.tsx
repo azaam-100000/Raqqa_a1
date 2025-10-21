@@ -1,6 +1,5 @@
 
 import React from 'react';
-import './MicWaveform.css';
 
 const MicWaveform: React.FC = () => {
   return (
