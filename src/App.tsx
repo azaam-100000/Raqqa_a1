@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './hooks/useAuth';
-import ProtectedRoute from './components/ProtectedRoute';
+import ProtectedRoute from '/src/components/ProtectedRoute.tsx';
 import PermissionsWizard from './components/PermissionsWizard';
 import ProfileCompletionWizard from './components/ProfileCompletionWizard';
 import IncomingCallModal from './components/IncomingCallModal';
