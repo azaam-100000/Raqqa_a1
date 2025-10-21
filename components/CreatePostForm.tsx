@@ -312,6 +312,7 @@ const CreatePostForm: React.FC<CreatePostFormProps> = ({ groupId, onPostCreated,
         profiles: {
             full_name: profile?.full_name || null,
             avatar_url: profile?.avatar_url || null,
+            bio: profile?.bio || null,
         },
         groups: groupData || null,
         likes: [],

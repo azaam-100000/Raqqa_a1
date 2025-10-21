@@ -1,4 +1,5 @@
 
+
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI, LiveSession, LiveServerMessage, Modality, Blob } from "@google/genai";
 
@@ -67,13 +68,12 @@ export const useLiveConversation = () => {
     });
 
     useEffect(() => {
-        // Safely check for API key to prevent crashes when process.env is not defined.
-        const apiKey = typeof process !== 'undefined' && process.env ? process.env.API_KEY : null;
+        const apiKey = process.env.API_KEY;
 
         if (apiKey) {
-            aiRef.current = new GoogleGenAI({ apiKey: apiKey });
+            aiRef.current = new GoogleGenAI({ apiKey });
         } else {
-            console.error("Gemini API key not found or process.env is not defined.");
+            console.error("Gemini API key not found in process.env.API_KEY.");
             setError("ميزة المساعد الصوتي معطلة لعدم توفر مفتاح الواجهة البرمجية (API Key).");
         }
         
@@ -212,9 +212,14 @@ export const useLiveConversation = () => {
         setIsLoading(false);
 
         if (sessionPromiseRef.current) {
-            const session = await sessionPromiseRef.current;
-            session.close();
-            sessionPromiseRef.current = null;
+            try {
+                const session = await sessionPromiseRef.current;
+                session.close();
+            } catch (e) {
+                console.warn("Error closing session, it might already be closed.", e);
+            } finally {
+                sessionPromiseRef.current = null;
+            }
         }
         
         if (scriptProcessorRef.current) {
@@ -232,8 +237,8 @@ export const useLiveConversation = () => {
         }
         
         if (audioContextRef.current) {
-            await audioContextRef.current.input.close();
-            await audioContextRef.current.output.close();
+            await audioContextRef.current.input.close().catch(e => console.warn("Error closing input audio context:", e));
+            await audioContextRef.current.output.close().catch(e => console.warn("Error closing output audio context:", e));
             audioContextRef.current = null;
         }
         

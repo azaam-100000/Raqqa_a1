@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth.tsx';
+import { useAuth } from '../hooks/useAuth.ts';
 import AuthLayout from './AuthLayout.tsx';
 import Button from '../components/ui/Button.tsx';
 
