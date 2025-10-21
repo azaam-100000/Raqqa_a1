@@ -83,11 +83,14 @@ interface MessageBubbleProps {
   message: Message;
   isFirstInGroup: boolean;
   isLastInGroup: boolean;
-  onOpenMenu: (message: Message, target: HTMLElement) => void;
   showReadReceipt: boolean;
+  selectionMode: boolean;
+  isSelected: boolean;
+  onShortPress: (messageId: string) => void;
+  onLongPress: (message: Message) => void;
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isFirstInGroup, isLastInGroup, onOpenMenu, showReadReceipt }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isFirstInGroup, isLastInGroup, showReadReceipt, selectionMode, isSelected, onShortPress, onLongPress }) => {
   const { user } = useAuth();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -116,23 +119,27 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isFirstInGroup, 
   
   const messageTime = new Date(message.created_at).toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
 
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-      longPressTimer.current = window.setTimeout(() => {
-          onOpenMenu(message, e.currentTarget);
-      }, 500); // 500ms for a long press
+  const handlePress = () => {
+    if (selectionMode) {
+        onShortPress(message.id);
+    }
   };
 
+  const handleLongPress = (e: React.TouchEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      onLongPress(message);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+      longPressTimer.current = window.setTimeout(() => {
+          handleLongPress(e);
+      }, 500);
+  };
   const handleTouchEnd = () => {
       clearTimeout(longPressTimer.current);
   };
-  
   const handleTouchMove = () => {
       clearTimeout(longPressTimer.current);
-  };
-
-  const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      onOpenMenu(message, e.currentTarget);
   };
   
   const promotionMatch = message.content?.match(/^\[PROMOTION_POST:(.+)\]$/);
@@ -176,18 +183,20 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isFirstInGroup, 
   return (
     <div className={`flex ${containerClasses} ${marginClass}`}>
       <div 
-        className={`max-w-md lg:max-w-xl rounded-2xl cursor-pointer ${bubbleClasses} ${paddingClasses}`}
+        className={`relative max-w-md lg:max-w-xl rounded-2xl cursor-pointer ${bubbleClasses} ${paddingClasses}`}
+        onClick={handlePress}
+        onContextMenu={handleLongPress}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onTouchMove={handleTouchMove}
-        onContextMenu={handleContextMenu}
       >
+        {isSelected && <div className="absolute inset-0 bg-cyan-500/30 dark:bg-cyan-400/30 rounded-2xl"></div>}
         {imageUrl && (
             <img 
                 src={imageUrl} 
                 alt="محتوى مرسل"
                 className={`rounded-lg max-w-xs max-h-80 object-cover ${message.content || audioUrl ? 'mb-2' : ''}`}
-                onClick={() => window.open(imageUrl, '_blank')}
+                onClick={(e) => { if (!selectionMode) { e.stopPropagation(); window.open(imageUrl, '_blank'); } }}
             />
         )}
         {audioUrl && <AudioPlayer src={audioUrl} isSender={isSender} />}
