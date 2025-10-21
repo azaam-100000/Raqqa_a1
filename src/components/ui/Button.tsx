@@ -1,5 +1,5 @@
 import React from 'react';
-import Spinner from './Spinner';
+import Spinner from './Spinner.tsx';
 import { useNavigate } from 'react-router-dom';
 
 

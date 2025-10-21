@@ -1,10 +1,8 @@
-
-
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from '../services/supabase';
+import { supabase } from '../services/supabase.ts';
 import { Session, User, RealtimeChannel } from '@supabase/supabase-js';
 import type { Provider } from '@supabase/supabase-js';
-import { Profile } from '../types';
+import { Profile } from '../types.ts';
 
 export interface PresenceState {
   [key: string]: {
