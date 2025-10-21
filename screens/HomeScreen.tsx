@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { supabase } from '../services/supabase';
-import { Post, Product, RentalPost } from '../types';
-import CreatePostForm from '../components/CreatePostForm';
-import PostCard from '../components/PostCard';
-import ProductPostCard from '../components/ProductPostCard';
-import RentalPostCard from '../components/RentalPostCard';
-import Spinner from '../components/ui/Spinner';
-import Avatar from '../components/ui/Avatar';
-import { getErrorMessage, playNotificationSound, triggerHapticFeedback } from '../utils/errors';
-import PostCardSkeleton from '../components/ui/PostCardSkeleton';
+import { useAuth } from '../hooks/useAuth.ts';
+import { supabase } from '../services/supabase.ts';
+import { Post, Product, RentalPost } from '../types.ts';
+import CreatePostForm from '../components/CreatePostForm.tsx';
+import PostCard from '../components/PostCard.tsx';
+import ProductPostCard from '../components/ProductPostCard.tsx';
+import RentalPostCard from '../components/RentalPostCard.tsx';
+import Spinner from '../components/ui/Spinner.tsx';
+import Avatar from '../components/ui/Avatar.tsx';
+import { getErrorMessage, playNotificationSound, triggerHapticFeedback } from '../utils/errors.ts';
+import PostCardSkeleton from '../components/ui/PostCardSkeleton.tsx';
 
 type FeedItem = (Post & { item_type: 'post' }) | (Product & { item_type: 'product' }) | (RentalPost & { item_type: 'rental' });
 type FeedFilter = 'all' | 'groups' | 'stores' | 'rentals';

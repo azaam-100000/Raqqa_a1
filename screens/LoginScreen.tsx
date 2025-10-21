@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import AuthLayout from './AuthLayout';
-import Input from '../components/ui/Input';
-import Button from '../components/ui/Button';
-import { getErrorMessage } from '../utils/errors';
+import { useAuth } from '../hooks/useAuth.ts';
+import AuthLayout from './AuthLayout.tsx';
+import Input from '../components/ui/Input.tsx';
+import Button from '../components/ui/Button.tsx';
+import { getErrorMessage } from '../utils/errors.ts';
 
 const GoogleIcon = () => (
     <svg className="h-5 w-5 mr-3" viewBox="0 0 48 48">

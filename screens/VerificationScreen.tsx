@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import AuthLayout from './AuthLayout';
-import Button from '../components/ui/Button';
+import { useAuth } from '../hooks/useAuth.tsx';
+import AuthLayout from './AuthLayout.tsx';
+import Button from '../components/ui/Button.tsx';
 
 const VerificationScreen: React.FC = () => {
   const [otp, setOtp] = useState(new Array(6).fill(""));
