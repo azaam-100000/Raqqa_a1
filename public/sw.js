@@ -1,4 +1,4 @@
-const CACHE_NAME = 'raqqa-market-cache-v9'; // Reverted to auto-update behavior
+const CACHE_NAME = 'raqqa-market-cache-v10'; // Bump version to force update
 const APP_SHELL_URLS = [
   '/', // Cache the root URL
   '/index.html',
@@ -8,14 +8,14 @@ const APP_SHELL_URLS = [
 ];
 
 self.addEventListener('install', event => {
-  console.log('Service Worker: Install Event v9');
+  console.log('Service Worker: Install Event v10');
   // Force the waiting service worker to become the active service worker.
   self.skipWaiting(); 
   
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Service Worker: Caching App Shell v9');
+        console.log('Service Worker: Caching App Shell v10');
         const requests = APP_SHELL_URLS.map(url => new Request(url, { cache: 'reload' }));
         return cache.addAll(requests);
       })
@@ -23,7 +23,7 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  console.log('Service Worker: Activate Event v9');
+  console.log('Service Worker: Activate Event v10');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
@@ -36,7 +36,7 @@ self.addEventListener('activate', event => {
         })
       );
     }).then(() => {
-      console.log('Service Worker: Claiming clients v9');
+      console.log('Service Worker: Claiming clients v10');
       return self.clients.claim();
     })
   );
@@ -101,7 +101,7 @@ self.addEventListener('push', event => {
     data = {
       title: 'إشعار جديد',
       body: event.data.text(),
-      url: '/',
+      data: { url: '/#/' }, // Use hash for HashRouter
     };
   }
 
@@ -111,10 +111,22 @@ self.addEventListener('push', event => {
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-192x192.png',
     vibrate: [200, 100, 200],
-    data: {
-      url: data.url || '/',
-    },
+    data: data.data || { url: '/#/' }, // Default data with hash
+    actions: data.actions || [],
   };
+
+  // Special handling for incoming call notifications from Edge Function
+  if (data.type === 'incoming_call') {
+    options.actions = [
+      { action: 'accept-call', title: 'قبول' },
+      { action: 'decline-call', title: 'رفض' }
+    ];
+    // Keep notification open until user interacts
+    options.requireInteraction = true; 
+    // Pass call data to the notification
+    options.data.callerId = data.callerId;
+    options.data.callType = data.callType;
+  }
 
   event.waitUntil(
     self.registration.showNotification(title, options)
@@ -123,19 +135,33 @@ self.addEventListener('push', event => {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const urlToOpen = new URL(event.notification.data.url || '/', self.location.origin).href;
+  
+  const { action, notification: { data } } = event;
+
+  let urlToOpen;
+
+  if (action === 'accept-call' && data.callType && data.callerId) {
+    // Construct the correct URL for accepting a call using HashRouter format
+    urlToOpen = new URL(`/#/call/${data.callType}/${data.callerId}`, self.location.origin).href;
+  } else if (action === 'decline-call') {
+    // For declining, we can't easily send a message back to the caller from the SW.
+    // The call request will time out on the caller's side. We just close the notification.
+    return;
+  } else {
+    // Default action: open the URL from the notification data, or fallback to home
+    urlToOpen = new URL(data.url || '/#/', self.location.origin).href;
+  }
   
   event.waitUntil(
     clients.matchAll({
       type: 'window',
       includeUncontrolled: true,
     }).then(clientList => {
-      // Check if a window is already open with the target URL
+      // Check if a window is already open with the app's origin
       for (const client of clientList) {
-        // Use new URL objects to compare paths without hash
-        const clientUrl = new URL(client.url);
-        const targetUrl = new URL(urlToOpen);
-        if (clientUrl.pathname === targetUrl.pathname && 'focus' in client) {
+        if (new URL(client.url).origin === new URL(urlToOpen).origin && 'focus' in client) {
+          // If a window is open, navigate it to the correct URL and focus
+          client.navigate(urlToOpen);
           return client.focus();
         }
       }
