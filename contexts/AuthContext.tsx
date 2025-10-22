@@ -46,9 +46,8 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-// NOTE: This is a placeholder public key. In a real application, you should generate your own
-// VAPID keys (e.g., using the `web-push` library) and store them securely.
-const VAPID_PUBLIC_KEY = 'BNo-zNSL13n6T88_T-4LajBw-5zJ8gLBlsWfPmm2Q53z-m7iFpdSCqM4zCqFb49z1qH5Mtl-7d2d3y-w1HkFpGc';
+// This is the public VAPID key corresponding to the private key in Supabase Edge Functions secrets.
+const VAPID_PUBLIC_KEY = 'BOehlIKsnI7FYQZ67bMWWPB9KlDpb4jDPPDvOECmpI5_NGykigBAw6ehASj31pfQjymD9e0vtYgoH8RjCU41Hd8';
 
 const PROFILE_COLUMNS = 'id, full_name, avatar_url, bio, status, cover_photo_url, gender, place_of_origin, website, contact_info, education_level, gender_privacy, place_of_origin_privacy, website_privacy, contact_info_privacy, education_level_privacy, message_privacy, read_receipts_enabled, blocked_users, date_of_birth, date_of_birth_privacy';
 
@@ -205,19 +204,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             });
           }
           
+          // Corrected upsert logic
           const { error } = await supabase
             .from('push_subscriptions')
             .upsert(
               {
-                endpoint: subscription.endpoint,
                 user_id: user.id,
                 subscription_details: subscription.toJSON(),
               },
-              { onConflict: 'endpoint' }
+              { onConflict: 'user_id' }
             );
 
           if (error) {
             console.error('Error saving push subscription:', error);
+          } else {
+            console.log('Push subscription saved successfully.');
           }
         } catch (err) {
           console.error('Error setting up push notifications:', err);

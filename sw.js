@@ -101,7 +101,7 @@ self.addEventListener('push', event => {
     data = {
       title: 'إشعار جديد',
       body: event.data.text(),
-      data: { url: '/#/' },
+      data: { url: '/#/' }, // Use hash for HashRouter
     };
   }
 
@@ -111,16 +111,19 @@ self.addEventListener('push', event => {
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-192x192.png',
     vibrate: [200, 100, 200],
-    data: data.data || { url: '/#/' },
+    data: data.data || { url: '/#/' }, // Default data with hash
+    actions: data.actions || [],
   };
 
-  // Special handling for incoming call notifications
+  // Special handling for incoming call notifications from Edge Function
   if (data.type === 'incoming_call') {
     options.actions = [
       { action: 'accept-call', title: 'قبول' },
       { action: 'decline-call', title: 'رفض' }
     ];
-    options.requireInteraction = true;
+    // Keep notification open until user interacts
+    options.requireInteraction = true; 
+    // Pass call data to the notification
     options.data.callerId = data.callerId;
     options.data.callType = data.callType;
   }
@@ -138,11 +141,11 @@ self.addEventListener('notificationclick', event => {
   let urlToOpen;
 
   if (action === 'accept-call' && data.callType && data.callerId) {
-    // Use HashRouter format for the URL
+    // Construct the correct URL for accepting a call using HashRouter format
     urlToOpen = new URL(`/#/call/${data.callType}/${data.callerId}`, self.location.origin).href;
   } else if (action === 'decline-call') {
-    // For decline, we can't easily send a message back to the caller from the SW.
-    // The call request will time out on the caller's side. We do nothing here.
+    // For declining, we can't easily send a message back to the caller from the SW.
+    // The call request will time out on the caller's side. We just close the notification.
     return;
   } else {
     // Default action: open the URL from the notification data, or fallback to home
@@ -154,9 +157,11 @@ self.addEventListener('notificationclick', event => {
       type: 'window',
       includeUncontrolled: true,
     }).then(clientList => {
-      // Check if a window is already open with the target URL
+      // Check if a window is already open with the app's origin
       for (const client of clientList) {
-        if (client.url === urlToOpen && 'focus' in client) {
+        if (new URL(client.url).origin === new URL(urlToOpen).origin && 'focus' in client) {
+          // If a window is open, navigate it to the correct URL and focus
+          client.navigate(urlToOpen);
           return client.focus();
         }
       }
