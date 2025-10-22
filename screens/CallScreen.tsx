@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '../services/supabase';
-import { useAuth } from '../hooks/useAuth';
-import { Profile } from '../types';
-import Spinner from '../components/ui/Spinner';
-import Avatar from '../components/ui/Avatar';
+import { supabase } from '../services/supabase.ts';
+import { useAuth } from '../hooks/useAuth.ts';
+import { Profile } from '../types.ts';
+import Spinner from '../components/ui/Spinner.tsx';
+import Avatar from '../components/ui/Avatar.tsx';
 
 // Icons
-const MicOnIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>;
-const MicOffIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="2" y1="2" x2="22" y2="22" /><path d="M10.25 5.25a3 3 0 0 0-3.5 3.5v1.5" /><path d="M8 5a3 3 0 0 1 6 0v7a3 3 0 0 1-.28.88" /><path d="M19 10v2a7 7 0 0 1-11.26 5.8" /><line x1="12" y1="19" x2="12" y2="22" /></svg>;
-const VideoOnIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>;
-const VideoOffIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 16v-3.27a2.23 2.23 0 0 0-1.07-1.93l-8-5.34A2 2 0 0 0 3 7.27V17a2 2 0 0 0 3.07 1.73l.93-.62M1 1l22 22"></path></svg>;
-const EndCallIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c5.52 0 10 4.48 10 10s-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2zm1 14.17l3.88 3.88a9.018 9.018 0 0 1-9.76 0l3.88-3.88c.54.34 1.16.55 1.83.55s1.29-.21 1.83-.55zm-7.76-3.88l-3.88 3.88A9.018 9.018 0 0 1 2 12c0-1.83.55-3.54 1.47-4.99l3.88 3.88c-.34.54-.55 1.16-.55 1.83s.21 1.29.55 1.83zm11.64-5.28L3.01 4.12a9.018 9.018 0 0 1 9.76 0l3.88 3.88z"/></svg>;
+const MicOnIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>;
+const MicOffIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="2" y1="2" x2="22" y2="22" /><path d="M10.25 5.25a3 3 0 0 0-3.5 3.5v1.5" /><path d="M8 5a3 3 0 0 1 6 0v7a3 3 0 0 1-.28.88" /><path d="M19 10v2a7 7 0 0 1-11.26 5.8" /><line x1="12" y1="19" x2="12" y2="22" /></svg>;
+const VideoOnIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>;
+const VideoOffIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 16v-3.27a2.23 2.23 0 0 0-1.07-1.93l-8-5.34A2 2 0 0 0 3 7.27V17a2 2 0 0 0 3.07 1.73l.93-.62M1 1l22 22"></path></svg>;
+const EndCallIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="currentColor"><path d="M12 2c5.52 0 10 4.48 10 10s-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2zm1 14.17l3.88 3.88a9.018 9.018 0 0 1-9.76 0l3.88-3.88c.54.34 1.16.55 1.83.55s1.29-.21 1.83-.55zm-7.76-3.88l-3.88 3.88A9.018 9.018 0 0 1 2 12c0-1.83.55-3.54 1.47-4.99l3.88 3.88c-.34.54-.55 1.16-.55 1.83s.21 1.29.55 1.83zm11.64-5.28L3.01 4.12a9.018 9.018 0 0 1 9.76 0l3.88 3.88z"/></svg>;
 
 type CallStatus = 'idle' | 'requesting' | 'connecting' | 'connected' | 'ended' | 'failed';
 
@@ -126,7 +126,17 @@ const CallScreen: React.FC = () => {
                     });
                     await responseChannel.subscribe();
 
+                    // This sends the REALTIME broadcast for in-app notification
                     requestChannel.send({ type: 'broadcast', event: 'call-request', payload: { caller: profile, callType } });
+                    
+                    // This inserts a row to trigger the PUSH notification for when the app is closed
+                    await supabase.from('notifications').insert({
+                        user_id: otherUserId, // The person being called
+                        actor_id: user.id,    // The person calling
+                        type: 'incoming_call',
+                        entity_id: user.id,   // The call is associated with the caller
+                        call_type: callType,  // Pass the call type for the push payload
+                    });
 
                     timeoutRef.current = window.setTimeout(() => {
                         setStatus('failed'); setStatusText('لا يوجد رد'); hangUp();
