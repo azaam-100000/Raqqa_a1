@@ -101,7 +101,7 @@ self.addEventListener('push', event => {
     data = {
       title: 'إشعار جديد',
       body: event.data.text(),
-      url: '/',
+      data: { url: '/#/' },
     };
   }
 
@@ -111,10 +111,19 @@ self.addEventListener('push', event => {
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-192x192.png',
     vibrate: [200, 100, 200],
-    data: {
-      url: data.url || '/',
-    },
+    data: data.data || { url: '/#/' },
   };
+
+  // Special handling for incoming call notifications
+  if (data.type === 'incoming_call') {
+    options.actions = [
+      { action: 'accept-call', title: 'قبول' },
+      { action: 'decline-call', title: 'رفض' }
+    ];
+    options.requireInteraction = true;
+    options.data.callerId = data.callerId;
+    options.data.callType = data.callType;
+  }
 
   event.waitUntil(
     self.registration.showNotification(title, options)
@@ -123,7 +132,22 @@ self.addEventListener('push', event => {
 
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const urlToOpen = new URL(event.notification.data.url || '/', self.location.origin).href;
+  
+  const { action, notification: { data } } = event;
+
+  let urlToOpen;
+
+  if (action === 'accept-call' && data.callType && data.callerId) {
+    // Use HashRouter format for the URL
+    urlToOpen = new URL(`/#/call/${data.callType}/${data.callerId}`, self.location.origin).href;
+  } else if (action === 'decline-call') {
+    // For decline, we can't easily send a message back to the caller from the SW.
+    // The call request will time out on the caller's side. We do nothing here.
+    return;
+  } else {
+    // Default action: open the URL from the notification data, or fallback to home
+    urlToOpen = new URL(data.url || '/#/', self.location.origin).href;
+  }
   
   event.waitUntil(
     clients.matchAll({
@@ -132,10 +156,7 @@ self.addEventListener('notificationclick', event => {
     }).then(clientList => {
       // Check if a window is already open with the target URL
       for (const client of clientList) {
-        // Use new URL objects to compare paths without hash
-        const clientUrl = new URL(client.url);
-        const targetUrl = new URL(urlToOpen);
-        if (clientUrl.pathname === targetUrl.pathname && 'focus' in client) {
+        if (client.url === urlToOpen && 'focus' in client) {
           return client.focus();
         }
       }
