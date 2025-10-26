@@ -1,4 +1,4 @@
-const CACHE_NAME = 'raqqa-market-cache-v10'; // Bump version to force update
+const CACHE_NAME = 'raqqa-market-cache-v11'; // Bump version to force update
 const APP_SHELL_URLS = [
   '/', // Cache the root URL
   '/index.html',
@@ -8,14 +8,14 @@ const APP_SHELL_URLS = [
 ];
 
 self.addEventListener('install', event => {
-  console.log('Service Worker: Install Event v10');
+  console.log('Service Worker: Install Event v11');
   // Force the waiting service worker to become the active service worker.
   self.skipWaiting(); 
   
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Service Worker: Caching App Shell v10');
+        console.log('Service Worker: Caching App Shell v11');
         const requests = APP_SHELL_URLS.map(url => new Request(url, { cache: 'reload' }));
         return cache.addAll(requests);
       })
@@ -23,7 +23,7 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  console.log('Service Worker: Activate Event v10');
+  console.log('Service Worker: Activate Event v11');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
@@ -36,7 +36,7 @@ self.addEventListener('activate', event => {
         })
       );
     }).then(() => {
-      console.log('Service Worker: Claiming clients v10');
+      console.log('Service Worker: Claiming clients v11');
       return self.clients.claim();
     })
   );

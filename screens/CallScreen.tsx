@@ -59,7 +59,7 @@ const CallScreen: React.FC = () => {
         cleanup();
         setStatus('ended');
         setStatusText('تم إنهاء المكالمة');
-        setTimeout(() => navigate(`/chat/${otherUserId}`), 1500);
+        setTimeout(() => navigate(`/chat/${otherUserId}`, { replace: true }), 1500);
     };
 
     useEffect(() => {
@@ -96,7 +96,7 @@ const CallScreen: React.FC = () => {
                 
                 signalChannel.on('broadcast', { event: 'hang-up' }, () => {
                     cleanup(); setStatus('ended'); setStatusText('أنهى الطرف الآخر المكالمة');
-                    setTimeout(() => navigate(`/chat/${otherUserId}`), 1500);
+                    setTimeout(() => navigate(`/chat/${otherUserId}`, { replace: true }), 1500);
                 });
 
                 signalChannel.on('broadcast', { event: 'ice-candidate' }, ({ payload }) => {

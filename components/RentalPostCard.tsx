@@ -8,7 +8,7 @@ import { getErrorMessage, playLikeSound, triggerHapticFeedback, timeAgo } from '
 
 const AdminBadge = () => (
     <span className="ml-2 inline-flex items-center gap-1 align-middle">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" className="flex-shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" className="flex-shrink-0">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="black"/>
             <path d="m12 7.5 2.05 4.03 4.45.61-3.25 3.16.75 4.4-4-2.1-4 2.1.75-4.4-3.25-3.16 4.45-.61L12 7.5z" fill="#ef4444"/>
         </svg>
@@ -20,7 +20,7 @@ const HeartIcon = ({ filled }: { filled: boolean }) => ( <svg xmlns="http://www.
 const CommentIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg> );
 const ShareIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg> );
 const BedIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 4v16h20V4Z"/><path d="M2 10h20"/><path d="M12 4v6"/></svg>);
-const MapPinIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>);
+const SparklesIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3L9.5 8.5 4 11l5.5 2.5L12 19l2.5-5.5L20 11l-5.5-2.5z"/></svg>;
 const MoreIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg> );
 
 interface RentalPostCardProps {
@@ -42,6 +42,12 @@ const RentalPostCard: React.FC<RentalPostCardProps> = ({ post, onPostDeleted }) 
     const isOwner = user?.id === post.user_id;
     const isAuthorAdmin = post.profiles?.bio?.includes('[ADMIN]');
     
+    const paymentTermText = {
+        monthly: 'شهر',
+        quarterly: '3 أشهر',
+        semi_annually: '6 أشهر'
+    };
+
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -136,7 +142,7 @@ const RentalPostCard: React.FC<RentalPostCardProps> = ({ post, onPostDeleted }) 
     };
 
     return (
-    <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl overflow-hidden group">
+    <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl group mb-4">
         <div className="p-4">
              <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3 mb-2 flex-1">
@@ -167,22 +173,32 @@ const RentalPostCard: React.FC<RentalPostCardProps> = ({ post, onPostDeleted }) 
             </div>
         </div>
         <Link to={`/rental/${post.id}`} className="block">
-            <div className="relative w-full bg-gray-200 dark:bg-zinc-800">
-                {imageUrl && <img src={imageUrl} alt="Rental property" className="w-full h-auto" />}
-                 <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
-                     <p className="text-white text-xl font-bold">{post.rent_amount.toLocaleString()}$ / الشهر</p>
+            <div className="px-4 pb-3">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">بيت للإيجار في {post.region}</h2>
+                {post.address && <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">{post.address}</p>}
+            </div>
+            <div className="relative w-full bg-gray-200 dark:bg-zinc-800 px-4">
+                {imageUrl ? (
+                    <img src={imageUrl} alt="Rental property" className="w-full h-auto rounded-lg object-cover aspect-video" />
+                ) : (
+                    <div className="w-full aspect-video bg-gray-200 dark:bg-zinc-800 rounded-lg"></div>
+                )}
+                 <div className="absolute bottom-1 left-4 right-4 p-3 bg-gradient-to-t from-black/80 to-transparent rounded-b-lg">
+                     <p className="text-white text-xl font-bold">{post.rent_amount.toLocaleString()}$ / {paymentTermText[post.payment_term]}</p>
                  </div>
             </div>
             <div className="p-4">
-                 <div className="flex items-center gap-4 text-gray-700 dark:text-zinc-300 text-sm">
-                    <div className="flex items-center gap-1.5">
-                        <MapPinIcon />
-                        <span>{post.region}</span>
-                    </div>
+                 <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-gray-700 dark:text-zinc-300 text-sm">
                     <div className="flex items-center gap-1.5">
                         <BedIcon />
                         <span>{post.room_count} غرف</span>
                     </div>
+                    {post.condition && (
+                        <div className="flex items-center gap-1.5">
+                            <SparklesIcon />
+                            <span>{post.condition}</span>
+                        </div>
+                    )}
                  </div>
             </div>
         </Link>

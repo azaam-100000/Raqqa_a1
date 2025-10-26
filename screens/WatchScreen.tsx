@@ -70,6 +70,9 @@ const WatchScreen: React.FC = () => {
                 comments: [{ count: commentsMap.get(post.id) || 0 }],
             }));
             
+            // Shuffle videos randomly
+            augmentedPosts.sort(() => Math.random() - 0.5);
+
             // If a specific post ID is provided in the URL, move it to the front
             if (postId) {
                 const postIndex = augmentedPosts.findIndex(p => p.id === postId);

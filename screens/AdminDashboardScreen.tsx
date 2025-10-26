@@ -12,6 +12,7 @@ const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" heigh
 const FlagIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-yellow-400"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>;
 const SparklesIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-purple-400"><path d="M12 3L9.5 8.5 4 11l5.5 2.5L12 19l2.5-5.5L20 11l-5.5-2.5z"/></svg>;
 const SupportIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-green-400"><circle cx="12" cy="12" r="10" /><path d="m9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" /></svg>;
+const CurrencyIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-teal-400"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>;
 
 
 const AdminDashboardScreen: React.FC = () => {
@@ -114,7 +115,7 @@ const AdminDashboardScreen: React.FC = () => {
             </header>
             <main className="container mx-auto px-4 py-6">
                 <div className="max-w-4xl mx-auto">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                         <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 flex items-center gap-4">
                             <UsersIcon />
                             <div>
@@ -141,6 +142,13 @@ const AdminDashboardScreen: React.FC = () => {
                             <div>
                                 <p className="text-slate-400">المجتمع التفاعلي</p>
                                 <p className="text-lg font-semibold text-purple-400">توليد تفاعلات</p>
+                            </div>
+                        </Link>
+                        <Link to="/admin/currency-rates" className="bg-slate-800 border border-slate-700 rounded-lg p-4 flex items-center gap-4 hover:border-teal-400 transition-colors">
+                            <CurrencyIcon />
+                            <div>
+                                <p className="text-slate-400">أسعار العملات</p>
+                                <p className="text-lg font-semibold text-teal-400">إدارة الأسعار</p>
                             </div>
                         </Link>
                     </div>

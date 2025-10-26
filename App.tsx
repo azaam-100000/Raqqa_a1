@@ -36,7 +36,6 @@ import GroupMembersScreen from './screens/GroupMembersScreen.tsx';
 import SearchScreen from './screens/SearchScreen.tsx';
 import SuggestionsScreen from './screens/SuggestionsScreen.tsx';
 import WatchScreen from './screens/WatchScreen.tsx';
-import SalesAssistantScreen from './screens/SalesAssistantScreen.tsx';
 import CurrencyScreen from './screens/CurrencyScreen.tsx';
 import HouseRentalsScreen from './screens/HouseRentalsScreen.tsx';
 import CreateRentalScreen from './screens/CreateRentalScreen.tsx';
@@ -56,6 +55,7 @@ import UpdateNotification from './components/UpdateNotification.tsx';
 import HelpAndSupportScreen from './screens/HelpAndSupportScreen.tsx';
 import AdminSupportTicketsScreen from './screens/AdminSupportTicketsScreen.tsx';
 import SupportTicketDetailScreen from './screens/SupportTicketDetailScreen.tsx';
+import AdminCurrencyRatesScreen from './screens/AdminCurrencyRatesScreen.tsx';
 import { Profile } from './types.ts';
 
 interface IncomingCall {
@@ -227,7 +227,6 @@ const AppContent: React.FC = () => {
         <Route path="/notifications" element={<ProtectedRoute><NotificationsScreen /></ProtectedRoute>} />
         <Route path="/call/:callType/:userId" element={<ProtectedRoute><CallScreen /></ProtectedRoute>} />
         <Route path="/suggestions" element={<ProtectedRoute><SuggestionsScreen /></ProtectedRoute>} />
-        <Route path="/sales-assistant" element={<ProtectedRoute><SalesAssistantScreen /></ProtectedRoute>} />
         <Route path="/live-conversation" element={<ProtectedRoute><LiveConversationScreen /></ProtectedRoute>} />
         <Route path="/rates" element={<ProtectedRoute><CurrencyScreen /></ProtectedRoute>} />
         
@@ -250,6 +249,7 @@ const AppContent: React.FC = () => {
         <Route path="/admin/reports" element={<ProtectedRoute><AdminReportsScreen /></ProtectedRoute>} />
         <Route path="/admin/engagement-ai" element={<ProtectedRoute><AdminEngagementAIScreen /></ProtectedRoute>} />
         <Route path="/admin/support-tickets" element={<ProtectedRoute><AdminSupportTicketsScreen /></ProtectedRoute>} />
+        <Route path="/admin/currency-rates" element={<ProtectedRoute><AdminCurrencyRatesScreen /></ProtectedRoute>} />
         
         {/* Fallback route */}
         <Route path="*" element={<Navigate to="/home" replace />} />

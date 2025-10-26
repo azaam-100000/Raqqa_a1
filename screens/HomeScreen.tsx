@@ -63,13 +63,10 @@ const NotificationsIcon = () => (
     </svg>
 );
 
-const SalesAssistantIcon = () => (
+const SearchIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
-        <path d="M12 8V4H8"/>
-        <rect x="4" y="12" width="16" height="8" rx="2"/>
-        <path d="M8 12v-2a4 4 0 1 1 8 0v2"/>
-        <path d="M12 16h.01"/>
-        <path d="M16 16h.01"/>
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
     </svg>
 );
 
@@ -435,8 +432,8 @@ const initializeFeed = useCallback((isRefreshing: boolean) => {
               سوق محافظة الرقه
             </h1>
             <div className="flex items-center gap-1 sm:gap-2 text-gray-600 dark:text-zinc-300">
-                <Link to="/sales-assistant" className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800" title="مساعد البيع">
-                    <SalesAssistantIcon />
+                <Link to="/search" className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800" title="بحث">
+                    <SearchIcon />
                 </Link>
                 <Link to="/messages" className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800" title="الرسائل">
                   <MessengerIcon />

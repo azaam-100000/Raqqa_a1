@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import GuestLock from './GuestLock';
 
 const HomeIcon = ({ isActive }: { isActive: boolean }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`h-6 w-6 transition-colors ${isActive ? 'text-teal-400' : 'text-gray-500 dark:text-zinc-400'}`}>
@@ -34,30 +35,39 @@ const HouseIcon = ({ isActive }: { isActive: boolean }) => (
   </svg>
 );
 
-const BottomNavBar: React.FC = () => {
+const BottomNavBarContent: React.FC = () => {
   const activeLinkClass = "text-teal-400";
   const inactiveLinkClass = "text-gray-500 dark:text-zinc-400";
   const linkClass = "flex flex-col items-center justify-center gap-1 w-full h-full";
 
   return (
+    <div className="flex justify-around items-center h-16 max-w-2xl mx-auto px-2">
+      <NavLink to="/home" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>
+        {({ isActive }) => (<><HomeIcon isActive={isActive} /><span className="text-xs font-bold">الرئيسية</span></>)}
+      </NavLink>
+      <NavLink to="/watch" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>
+        {({ isActive }) => (<><VideoIcon isActive={isActive} /><span className="text-xs font-bold">شاهد</span></>)}
+      </NavLink>
+      <NavLink to="/stores" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>
+        {({ isActive }) => (<><StoreIcon isActive={isActive} /><span className="text-xs font-bold">المتاجر</span></>)}
+      </NavLink>
+      <NavLink to="/rentals" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>
+        {({ isActive }) => (<><HouseIcon isActive={isActive} /><span className="text-xs font-bold">إيجار</span></>)}
+      </NavLink>
+      <NavLink to="/groups" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>
+        {({ isActive }) => (<><GroupsIcon isActive={isActive} /><span className="text-xs font-bold">المجموعات</span></>)}
+      </NavLink>
+    </div>
+  );
+};
+
+
+const BottomNavBar: React.FC = () => {
+  return (
     <div className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-zinc-950/70 backdrop-blur-lg border-t border-gray-200 dark:border-zinc-800 z-20">
-      <div className="flex justify-around items-center h-16 max-w-2xl mx-auto px-2">
-        <NavLink to="/home" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>
-          {({ isActive }) => (<><HomeIcon isActive={isActive} /><span className="text-xs font-bold">الرئيسية</span></>)}
-        </NavLink>
-        <NavLink to="/watch" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>
-          {({ isActive }) => (<><VideoIcon isActive={isActive} /><span className="text-xs font-bold">شاهد</span></>)}
-        </NavLink>
-        <NavLink to="/stores" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>
-          {({ isActive }) => (<><StoreIcon isActive={isActive} /><span className="text-xs font-bold">المتاجر</span></>)}
-        </NavLink>
-        <NavLink to="/rentals" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>
-          {({ isActive }) => (<><HouseIcon isActive={isActive} /><span className="text-xs font-bold">إيجار</span></>)}
-        </NavLink>
-        <NavLink to="/groups" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>
-          {({ isActive }) => (<><GroupsIcon isActive={isActive} /><span className="text-xs font-bold">المجموعات</span></>)}
-        </NavLink>
-      </div>
+      <GuestLock>
+        <BottomNavBarContent />
+      </GuestLock>
     </div>
   );
 };

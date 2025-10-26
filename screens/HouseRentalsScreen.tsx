@@ -22,7 +22,7 @@ const HouseRentalsScreen: React.FC = () => {
             // 1. Fetch base posts
             const { data: postsData, error: postsError } = await supabase
                 .from('rental_posts')
-                .select('id, created_at, user_id, region, room_count, image_urls, rent_amount, payment_term')
+                .select('id, created_at, user_id, region, address, room_count, condition, image_urls, rent_amount, payment_term')
                 .order('created_at', { ascending: false });
 
             if (postsError) throw postsError;

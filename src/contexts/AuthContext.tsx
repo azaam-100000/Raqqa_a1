@@ -26,6 +26,8 @@ interface AuthContextType {
   isOnline: (userId: string) => boolean;
   isBlocked: (userId: string) => boolean;
   toggleBlock: (userId: string) => Promise<void>;
+  isGuestFromShare: boolean;
+  setIsGuestFromShare: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,8 +48,7 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-// NOTE: This is a placeholder public key. In a real application, you should generate your own
-// VAPID keys (e.g., using the `web-push` library) and store them securely.
+// This is the public VAPID key corresponding to the private key in Supabase Edge Functions secrets.
 const VAPID_PUBLIC_KEY = 'BNo-zNSL13n6T88_T-4LajBw-5zJ8gLBlsWfPmm2Q53z-m7iFpdSCqM4zCqFb49z1qH5Mtl-7d2d3y-w1HkFpGc';
 
 const PROFILE_COLUMNS = 'id, full_name, avatar_url, bio, status, cover_photo_url, gender, place_of_origin, website, contact_info, education_level, gender_privacy, place_of_origin_privacy, website_privacy, contact_info_privacy, education_level_privacy, message_privacy, read_receipts_enabled, blocked_users, date_of_birth, date_of_birth_privacy';
@@ -59,6 +60,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [authLoading, setAuthLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<PresenceState>({});
+  const [isGuestFromShare, setIsGuestFromShare] = useState(false);
 
   const checkProfileStatus = (profileToCheck: Profile): Profile | null => {
     if (profileToCheck.status === 'banned') {
@@ -218,6 +220,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
           if (error) {
             console.error('Error saving push subscription:', error);
+          } else {
+            console.log('Push subscription saved successfully.');
           }
         } catch (err) {
           console.error('Error setting up push notifications:', err);
@@ -330,6 +334,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isOnline,
     isBlocked,
     toggleBlock,
+    isGuestFromShare,
+    setIsGuestFromShare,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

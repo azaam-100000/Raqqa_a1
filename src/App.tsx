@@ -1,66 +1,62 @@
-
-
-
-
 import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
-import { useAuth } from './hooks/useAuth';
-import ProtectedRoute from './components/ProtectedRoute';
-import PermissionsWizard from './components/PermissionsWizard';
-import ProfileCompletionWizard from './components/ProfileCompletionWizard';
-import IncomingCallModal from './components/IncomingCallModal';
-import { supabase } from './services/supabase';
+import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext.tsx';
+import { useAuth } from './hooks/useAuth.ts';
+import ProtectedRoute from './components/ProtectedRoute.tsx';
+import PermissionsWizard from './components/PermissionsWizard.tsx';
+import ProfileCompletionWizard from './components/ProfileCompletionWizard.tsx';
+import IncomingCallModal from './components/IncomingCallModal.tsx';
+import { supabase } from './services/supabase.ts';
 
 
 // Screen Imports
-import LoginScreen from './screens/LoginScreen';
-import SignUpScreen from './screens/SignUpScreen';
-import VerificationScreen from './screens/VerificationScreen';
-import HomeScreen from './screens/HomeScreen';
-import AppLayout from './components/AppLayout';
-import PostDetailScreen from './screens/PostDetailScreen';
-import ProfileScreen from './screens/ProfileScreen';
-import EditProfileScreen from './screens/EditProfileScreen';
-import UserScreen from './screens/UserScreen';
-import StoresScreen from './screens/StoresScreen';
-import CreateStoreScreen from './screens/CreateStoreScreen';
-import StoreDetailScreen from './screens/StoreDetailScreen';
-import CreateProductScreen from './screens/CreateProductScreen';
-import ProductDetailScreen from './screens/ProductDetailScreen';
-import MessagesScreen from './screens/MessagesScreen';
-import ChatScreen from './screens/ChatScreen';
-import GroupsScreen from './screens/GroupsScreen';
-import CreateGroupScreen from './screens/CreateGroupScreen';
-import GroupDetailScreen from './screens/GroupDetailScreen';
-import NotificationsScreen from './screens/NotificationsScreen';
-import CallScreen from './screens/CallScreen';
-import FollowersScreen from './screens/FollowersScreen';
-import GroupMembersScreen from './screens/GroupMembersScreen';
-import SearchScreen from './screens/SearchScreen';
-import SuggestionsScreen from './screens/SuggestionsScreen';
-import WatchScreen from './screens/WatchScreen';
-import SalesAssistantScreen from './screens/SalesAssistantScreen';
-import CurrencyScreen from './screens/CurrencyScreen';
-import HouseRentalsScreen from './screens/HouseRentalsScreen';
-import CreateRentalScreen from './screens/CreateRentalScreen';
-import RentalDetailScreen from './screens/RentalDetailScreen';
-import EditRentalScreen from './screens/EditRentalScreen';
-import AdminDashboardScreen from './screens/AdminDashboardScreen';
-import AdminUserDetailScreen from './screens/AdminUserDetailScreen';
-import AdminReportsScreen from './screens/AdminReportsScreen';
-import SettingsScreen from './screens/SettingsScreen';
-import DisplaySettingsScreen from './screens/DisplaySettingsScreen';
-import ChatSettingsScreen from './screens/ChatSettingsScreen';
-import BlockedUsersScreen from './screens/BlockedUsersScreen';
-import ActivityLogScreen from './screens/ActivityLogScreen';
-import LiveConversationScreen from './screens/LiveConversationScreen';
-import AdminEngagementAIScreen from './screens/AdminEngagementAIScreen';
-import UpdateNotification from './components/UpdateNotification';
-import HelpAndSupportScreen from './screens/HelpAndSupportScreen';
-import AdminSupportTicketsScreen from './screens/AdminSupportTicketsScreen';
-import SupportTicketDetailScreen from './screens/SupportTicketDetailScreen';
-import { Profile } from './types';
+import LoginScreen from './screens/LoginScreen.tsx';
+import SignUpScreen from './screens/SignUpScreen.tsx';
+import VerificationScreen from './screens/VerificationScreen.tsx';
+import HomeScreen from './screens/HomeScreen.tsx';
+import AppLayout from './components/AppLayout.tsx';
+import PostDetailScreen from './screens/PostDetailScreen.tsx';
+import ProfileScreen from './screens/ProfileScreen.tsx';
+import EditProfileScreen from './screens/EditProfileScreen.tsx';
+import UserScreen from './screens/UserScreen.tsx';
+import StoresScreen from './screens/StoresScreen.tsx';
+import CreateStoreScreen from './screens/CreateStoreScreen.tsx';
+import StoreDetailScreen from './screens/StoreDetailScreen.tsx';
+import CreateProductScreen from './screens/CreateProductScreen.tsx';
+import ProductDetailScreen from './screens/ProductDetailScreen.tsx';
+import MessagesScreen from './screens/MessagesScreen.tsx';
+import ChatScreen from './screens/ChatScreen.tsx';
+import GroupsScreen from './screens/GroupsScreen.tsx';
+import CreateGroupScreen from './screens/CreateGroupScreen.tsx';
+import GroupDetailScreen from './screens/GroupDetailScreen.tsx';
+import NotificationsScreen from './screens/NotificationsScreen.tsx';
+import CallScreen from './screens/CallScreen.tsx';
+import FollowersScreen from './screens/FollowersScreen.tsx';
+import GroupMembersScreen from './screens/GroupMembersScreen.tsx';
+import SearchScreen from './screens/SearchScreen.tsx';
+import SuggestionsScreen from './screens/SuggestionsScreen.tsx';
+import WatchScreen from './screens/WatchScreen.tsx';
+import CurrencyScreen from './screens/CurrencyScreen.tsx';
+import HouseRentalsScreen from './screens/HouseRentalsScreen.tsx';
+import CreateRentalScreen from './screens/CreateRentalScreen.tsx';
+import RentalDetailScreen from './screens/RentalDetailScreen.tsx';
+import EditRentalScreen from './screens/EditRentalScreen.tsx';
+import AdminDashboardScreen from './screens/AdminDashboardScreen.tsx';
+import AdminUserDetailScreen from './screens/AdminUserDetailScreen.tsx';
+import AdminReportsScreen from './screens/AdminReportsScreen.tsx';
+import SettingsScreen from './screens/SettingsScreen.tsx';
+import DisplaySettingsScreen from './screens/DisplaySettingsScreen.tsx';
+import ChatSettingsScreen from './screens/ChatSettingsScreen.tsx';
+import BlockedUsersScreen from './screens/BlockedUsersScreen.tsx';
+import ActivityLogScreen from './screens/ActivityLogScreen.tsx';
+import LiveConversationScreen from './screens/LiveConversationScreen.tsx';
+import AdminEngagementAIScreen from './screens/AdminEngagementAIScreen.tsx';
+import UpdateNotification from './components/UpdateNotification.tsx';
+import HelpAndSupportScreen from './screens/HelpAndSupportScreen.tsx';
+import AdminSupportTicketsScreen from './screens/AdminSupportTicketsScreen.tsx';
+import SupportTicketDetailScreen from './screens/SupportTicketDetailScreen.tsx';
+import AdminCurrencyRatesScreen from './screens/AdminCurrencyRatesScreen.tsx';
+import { Profile } from './types.ts';
 
 interface IncomingCall {
   caller: Profile;
@@ -70,9 +66,23 @@ interface IncomingCall {
 const AppContent: React.FC = () => {
   const [showPermissionsWizard, setShowPermissionsWizard] = useState(false);
   const [showProfileWizard, setShowProfileWizard] = useState(false);
-  const { profile, loading, user } = useAuth();
+  const { profile, loading, user, setIsGuestFromShare } = useAuth();
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const hashParams = new URLSearchParams(location.hash.split('?')[1]);
+    const sharedCity = hashParams.get('city');
+
+    if (!loading && !user && sharedCity) {
+        setIsGuestFromShare(true);
+    } else if (user) { // On login, ensure guest mode is off
+        setIsGuestFromShare(false);
+    } else if (!sharedCity) { // If not a share link, ensure guest mode is off
+        setIsGuestFromShare(false);
+    }
+  }, [user, loading, location, setIsGuestFromShare]);
 
   useEffect(() => {
     const permissionsRequested = localStorage.getItem('permissions_requested');
@@ -231,7 +241,6 @@ const AppContent: React.FC = () => {
         <Route path="/notifications" element={<ProtectedRoute><NotificationsScreen /></ProtectedRoute>} />
         <Route path="/call/:callType/:userId" element={<ProtectedRoute><CallScreen /></ProtectedRoute>} />
         <Route path="/suggestions" element={<ProtectedRoute><SuggestionsScreen /></ProtectedRoute>} />
-        <Route path="/sales-assistant" element={<ProtectedRoute><SalesAssistantScreen /></ProtectedRoute>} />
         <Route path="/live-conversation" element={<ProtectedRoute><LiveConversationScreen /></ProtectedRoute>} />
         <Route path="/rates" element={<ProtectedRoute><CurrencyScreen /></ProtectedRoute>} />
         
@@ -254,6 +263,7 @@ const AppContent: React.FC = () => {
         <Route path="/admin/reports" element={<ProtectedRoute><AdminReportsScreen /></ProtectedRoute>} />
         <Route path="/admin/engagement-ai" element={<ProtectedRoute><AdminEngagementAIScreen /></ProtectedRoute>} />
         <Route path="/admin/support-tickets" element={<ProtectedRoute><AdminSupportTicketsScreen /></ProtectedRoute>} />
+        <Route path="/admin/currency-rates" element={<ProtectedRoute><AdminCurrencyRatesScreen /></ProtectedRoute>} />
         
         {/* Fallback route */}
         <Route path="*" element={<Navigate to="/home" replace />} />
