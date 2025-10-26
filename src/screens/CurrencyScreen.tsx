@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Spinner from '../components/ui/Spinner';
 import Select from '../components/ui/Select';
 import { supabase } from '../services/supabase';
+import { useAuth } from '../hooks/useAuth';
 
 interface Rates {
     [key: string]: number;
@@ -54,6 +55,8 @@ const TabButton: React.FC<{ active: boolean; onClick: () => void; children: Reac
 
 const CurrencyScreen: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'local' | 'global'>('local');
+    const { isGuestFromShare } = useAuth();
+    const location = useLocation();
 
     const [frankfurterRates, setFrankfurterRates] = useState<FrankfurterResponse | null>(null);
     const [baseCurrency, setBaseCurrency] = useState('USD');
@@ -120,6 +123,15 @@ const CurrencyScreen: React.FC = () => {
         };
         fetchLocalRates();
     }, []);
+    
+    useEffect(() => {
+        const hashParams = new URLSearchParams(location.hash.split('?')[1]);
+        const sharedCity = hashParams.get('city');
+        if (isGuestFromShare && sharedCity && localRates && localRates[sharedCity]) {
+            setSelectedCity(sharedCity);
+        }
+    }, [isGuestFromShare, location, localRates]);
+
 
     const targetCurrencies = useMemo(() => {
         return Object.keys(currencyInfo).filter(c => c !== baseCurrency && c !== 'SYP');
@@ -128,8 +140,41 @@ const CurrencyScreen: React.FC = () => {
     const currentCityRates = localRates ? localRates[selectedCity] : null;
 
     const handleShare = () => {
-        alert('ميزة المشاركة قيد التطوير!');
+        if (!currentCityRates) return;
+        
+        const cityName = localRates?.[selectedCity]?.name || '';
+        const date = lastUpdated ? new Date(lastUpdated).toLocaleString('ar-EG', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'}) : '';
+        
+        const shareText = `
+أسعار الصرف في ${cityName}
+(${date})
+        
+📊 دولار أمريكي:
+- شراء: ${currentCityRates.USD_SYP.buy.toLocaleString()}
+- مبيع: ${currentCityRates.USD_SYP.sell.toLocaleString()}
+
+📊 ليرة تركية:
+- شراء: ${currentCityRates.TRY_SYP.buy.toLocaleString()}
+- مبيع: ${currentCityRates.TRY_SYP.sell.toLocaleString()}
+
+عبر تطبيق سوق محافظة الرقة
+        `.trim();
+        
+        const shareUrl = `${window.location.origin}${window.location.pathname}#/rates?city=${selectedCity}`;
+
+        if (navigator.share) {
+            navigator.share({
+                title: `أسعار العملات في ${cityName}`,
+                text: shareText,
+                url: shareUrl,
+            }).catch(error => console.error('Error sharing:', error));
+        } else {
+            // Fallback for browsers that don't support navigator.share
+            navigator.clipboard.writeText(shareText + `\n\nرابط: ${shareUrl}`);
+            alert('تم نسخ الأسعار إلى الحافظة. يمكنك الآن لصقها ومشاركتها.');
+        }
     };
+
 
     const renderLocalMarketSection = () => {
         if (localLoading) return <div className="text-center py-20"><Spinner /></div>;
