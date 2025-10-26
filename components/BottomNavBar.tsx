@@ -7,6 +7,13 @@ const HomeIcon = ({ isActive }: { isActive: boolean }) => (
   </svg>
 );
 
+const CurrencyIcon = ({ isActive }: { isActive: boolean }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`h-6 w-6 transition-colors ${isActive ? 'text-teal-400' : 'text-gray-500 dark:text-zinc-400'}`}>
+      <line x1="12" y1="1" x2="12" y2="23"></line>
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+  </svg>
+);
+
 const VideoIcon = ({ isActive }: { isActive: boolean }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`h-6 w-6 transition-colors ${isActive ? 'text-teal-400' : 'text-gray-500 dark:text-zinc-400'}`}>
     <path d="m22 8-6 4 6 4V8Z" />
@@ -44,6 +51,9 @@ const BottomNavBar: React.FC = () => {
       <div className="flex justify-around items-center h-16 max-w-2xl mx-auto px-2">
         <NavLink to="/home" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>
           {({ isActive }) => (<><HomeIcon isActive={isActive} /><span className="text-xs font-bold">الرئيسية</span></>)}
+        </NavLink>
+        <NavLink to="/rates" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>
+          {({ isActive }) => (<><CurrencyIcon isActive={isActive} /><span className="text-xs font-bold">الأسعار</span></>)}
         </NavLink>
         <NavLink to="/watch" className={({ isActive }) => `${linkClass} ${isActive ? activeLinkClass : inactiveLinkClass}`}>
           {({ isActive }) => (<><VideoIcon isActive={isActive} /><span className="text-xs font-bold">شاهد</span></>)}
