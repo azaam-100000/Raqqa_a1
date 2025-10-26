@@ -1,7 +1,8 @@
 import React from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import BottomNavBar from './BottomNavBar';
-import { useAuth } from '../hooks/useAuth';
+import BottomNavBar from './BottomNavBar.tsx';
+import { useAuth } from '../hooks/useAuth.ts';
+import NotificationPrompt from './NotificationPrompt.tsx';
 
 interface AppLayoutProps {
   installPrompt: Event | null;
@@ -23,6 +24,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ installPrompt }) => {
       <main className={`flex-1 overflow-y-auto ${hideBottomNav ? 'pb-0' : 'pb-16'}`}>
         <Outlet context={{ installPrompt }} />
       </main>
+      
+      {!isGuest && <NotificationPrompt />}
+
       {!hideBottomNav && (
         isGuest ? (
             <div 

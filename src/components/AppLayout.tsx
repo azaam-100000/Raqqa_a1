@@ -1,9 +1,10 @@
 import React from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-// FIX: Added .tsx extension to import path as it is required by the module resolver.
+// FIX: Added .tsx extension to import path to resolve module error.
 import BottomNavBar from './BottomNavBar.tsx';
-// FIX: Added .ts extension to import path as it is required by the module resolver.
+// FIX: Added .ts extension to import path to resolve module error.
 import { useAuth } from '../hooks/useAuth.ts';
+import NotificationPrompt from './NotificationPrompt.tsx';
 
 interface AppLayoutProps {
   installPrompt: Event | null;
@@ -25,6 +26,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ installPrompt }) => {
       <main className={`flex-1 overflow-y-auto ${hideBottomNav ? 'pb-0' : 'pb-16'}`}>
         <Outlet context={{ installPrompt }} />
       </main>
+      
+      {!isGuest && <NotificationPrompt />}
+
       {!hideBottomNav && (
         isGuest ? (
             <div 

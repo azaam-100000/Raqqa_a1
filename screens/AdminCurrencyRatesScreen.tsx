@@ -74,7 +74,6 @@ const AdminCurrencyRatesScreen: React.FC = () => {
         setError(null);
         setSuccess(null);
         try {
-            // FIX: Explicitly type the destructured array from Object.entries to resolve spread type error.
             const upsertData = Object.entries(rates).map(([city_key, rateData]: [string, RateData]) => ({
                 city_key,
                 ...rateData,
@@ -122,7 +121,6 @@ const AdminCurrencyRatesScreen: React.FC = () => {
                         <div className="text-center py-10"><Spinner /></div>
                     ) : (
                         <div className="space-y-4">
-                            {/* FIX: Explicitly type the destructured array from Object.entries to resolve property access errors on 'unknown'. */}
                             {Object.entries(rates).map(([cityKey, cityData]: [string, RateData]) => (
                                 <div key={cityKey} className="bg-slate-800 border border-slate-700 rounded-lg p-4">
                                     <h3 className="font-bold text-lg mb-4">{cityData.city_name}</h3>

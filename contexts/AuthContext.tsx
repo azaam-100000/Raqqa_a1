@@ -27,6 +27,7 @@ interface AuthContextType {
   isOnline: (userId: string) => boolean;
   isBlocked: (userId: string) => boolean;
   toggleBlock: (userId: string) => Promise<void>;
+  setupPushNotifications: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -198,61 +199,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, [user, profile]);
 
-  // Effect for setting up Push Notifications
-  useEffect(() => {
-    if (!user) return;
-
-    const setupPushNotifications = async () => {
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-      
-      try {
-        const registration = await navigator.serviceWorker.ready;
-        
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') {
-          console.log('Push notification permission not granted.');
-          return;
-        }
-
-        let subscription = await registration.pushManager.getSubscription();
-
-        if (!subscription) {
-          const vapidPublicKey = VAPID_PUBLIC_KEY;
-          if (!vapidPublicKey) {
-            console.error('VAPID_PUBLIC_KEY is missing.');
-            return;
-          }
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-          });
-        }
-        
-        const { error } = await supabase
-          .from('push_subscriptions')
-          .upsert(
-            {
-              user_id: user.id,
-              subscription_data: subscription,
-            },
-            { onConflict: 'user_id' }
-          );
-
-        if (error) {
-          console.error('Error saving push subscription:', error);
-        } else {
-          console.log('Push subscription saved successfully.');
-        }
-      } catch (err) {
-        console.error('Error setting up push notifications:', err);
-      }
-    };
-    
-    // Delay setup slightly to not block initial render and to ask for permission at a better time
-    setTimeout(setupPushNotifications, 5000);
-
-  }, [user]);
-  
   const refreshProfile = async () => {
     if (user) {
         const { data, error } = await supabase
@@ -268,6 +214,59 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     }
   }
+
+  const setupPushNotifications = async () => {
+    if (!user) {
+      console.warn('Cannot setup push notifications without a user.');
+      throw new Error('User not logged in.');
+    }
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      console.warn('Push notifications not supported.');
+      throw new Error('Push notifications not supported by this browser.');
+    }
+    
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        console.log('Push notification permission not granted.');
+        // Don't throw an error, user simply denied.
+        return;
+      }
+
+      let subscription = await registration.pushManager.getSubscription();
+
+      if (!subscription) {
+        const vapidPublicKey = VAPID_PUBLIC_KEY;
+        if (!vapidPublicKey) {
+          console.error('VAPID_PUBLIC_KEY is missing.');
+          throw new Error('VAPID public key is missing.');
+        }
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        });
+      }
+      
+      const { error } = await supabase
+        .from('push_subscriptions')
+        .upsert(
+          { user_id: user.id, subscription_data: subscription },
+          { onConflict: 'user_id' }
+        );
+
+      if (error) {
+        console.error('Error saving push subscription:', error);
+        throw error;
+      } else {
+        console.log('Push subscription saved successfully.');
+      }
+    } catch (err) {
+      console.error('Error setting up push notifications:', err);
+      throw err;
+    }
+  };
 
   const signInWithPassword = async (email: string, password: string) => {
     return supabase.auth.signInWithPassword({ email, password });
@@ -354,6 +353,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isOnline,
     isBlocked,
     toggleBlock,
+    setupPushNotifications,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

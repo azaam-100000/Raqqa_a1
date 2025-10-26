@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import { Group } from '../types';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../hooks/useAuth.ts';
 import Spinner from '../components/ui/Spinner';
 import Button from '../components/ui/Button';
 import GroupCard from '../components/GroupCard';
@@ -31,8 +31,7 @@ const GroupsScreen: React.FC = () => {
 
         if (memberGroupsError) throw memberGroupsError;
         
-        // FIX: Explicitly create a Set of strings to match the state type.
-        // Also handle the case where memberGroupsData is null to prevent runtime errors.
+        // FIX: Explicitly create a Set of strings and handle null case.
         const joinedIds = new Set<string>((memberGroupsData || []).map(mg => mg.group_id));
         setJoinedGroupIds(joinedIds);
 
