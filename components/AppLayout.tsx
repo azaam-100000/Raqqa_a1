@@ -3,7 +3,11 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import BottomNavBar from './BottomNavBar';
 import { useAuth } from '../hooks/useAuth';
 
-const AppLayout: React.FC = () => {
+interface AppLayoutProps {
+  installPrompt: Event | null;
+}
+
+const AppLayout: React.FC<AppLayoutProps> = ({ installPrompt }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isGuestFromShare } = useAuth();
@@ -17,7 +21,7 @@ const AppLayout: React.FC = () => {
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-zinc-950">
       <main className={`flex-1 overflow-y-auto ${hideBottomNav ? 'pb-0' : 'pb-16'}`}>
-        <Outlet />
+        <Outlet context={{ installPrompt }} />
       </main>
       {!hideBottomNav && (
         isGuest ? (

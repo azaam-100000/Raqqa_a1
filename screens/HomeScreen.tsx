@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useOutletContext } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.ts';
 import { supabase } from '../services/supabase.ts';
 import { Post, Product, RentalPost } from '../types.ts';
@@ -134,6 +134,9 @@ const HomeScreen: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [feedFilter, setFeedFilter] = useState<FeedFilter>('all');
   
+  const outletContext = useOutletContext<{ installPrompt: Event | null }>();
+  const installPrompt = outletContext?.installPrompt;
+  const [isStandalone, setIsStandalone] = useState(false);
 
   // Pull to refresh state
   const [pullStart, setPullStart] = useState<number | null>(null);
@@ -157,6 +160,11 @@ const HomeScreen: React.FC = () => {
     if (node) observer.current.observe(node);
   }, [loading, loadingMore, hasMore, isRefreshing]);
   
+  useEffect(() => {
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    setIsStandalone(standalone);
+  }, []);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -387,11 +395,29 @@ const initializeFeed = useCallback((isRefreshing: boolean) => {
     setIsDropdownOpen(false);
     signOut();
   };
+
+  const handleInstallClick = async () => {
+    if (!installPrompt) return;
+    const promptEvent = installPrompt as any;
+    promptEvent.prompt();
+    // The prompt can only be used once.
+  };
+
+  const showInstallButton = installPrompt && !isStandalone;
   
   return (
     <div>
       <header className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-lg sticky top-0 z-10 border-b border-gray-200 dark:border-zinc-800">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4 relative">
+           {showInstallButton && (
+            <button
+                onClick={handleInstallClick}
+                className="absolute top-2.5 left-4 z-20 bg-gradient-to-r from-teal-400 to-lime-400 text-zinc-900 text-xs font-bold py-1 px-3 rounded-full hover:opacity-90 shadow-lg hover:shadow-teal-500/20 transition-all duration-200"
+                title="تثبيت التطبيق"
+            >
+                تثبيت
+            </button>
+          )}
           <div className="flex justify-between items-center h-16">
             <h1 className="text-xl font-bold bg-gradient-to-r from-teal-400 to-lime-400 bg-clip-text text-transparent">
               سوق محافظة الرقه

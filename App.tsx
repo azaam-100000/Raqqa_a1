@@ -86,6 +86,8 @@ const AppContent: React.FC = () => {
             // Show the modal after a small delay to not be too intrusive
             setTimeout(() => setShowInstallModal(true), 3000); 
             sessionStorage.setItem('install_prompt_shown', 'true');
+        } else if (!isStandalone) {
+             setInstallPrompt(e);
         }
     };
 
@@ -227,7 +229,7 @@ const AppContent: React.FC = () => {
         <Route path="/verify" element={<VerificationScreen />} />
 
         {/* Protected routes */}
-        <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+        <Route path="/" element={<ProtectedRoute><AppLayout installPrompt={installPrompt} /></ProtectedRoute>}>
           <Route index element={<Navigate to="/home" replace />} />
           <Route path="/home" element={<HomeScreen />} />
           <Route path="/stores" element={<StoresScreen />} />
