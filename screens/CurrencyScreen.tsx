@@ -5,6 +5,7 @@ import Spinner from '../components/ui/Spinner';
 import Select from '../components/ui/Select';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
+import GuestLock from '../components/GuestLock';
 
 interface Rates {
     [key: string]: number;
@@ -56,7 +57,8 @@ const TabButton: React.FC<{ active: boolean; onClick: () => void; children: Reac
 
 const CurrencyScreen: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'local' | 'global'>('local');
-    const { isGuestFromShare } = useAuth();
+    const { user, isGuestFromShare } = useAuth();
+    const isGuest = isGuestFromShare && !user;
     const location = useLocation();
 
     const [frankfurterRates, setFrankfurterRates] = useState<FrankfurterResponse | null>(null);
@@ -87,8 +89,10 @@ const CurrencyScreen: React.FC = () => {
                 setFrankfurterLoading(false);
             }
         };
-        fetchFrankfurterRates();
-    }, [baseCurrency]);
+        if (activeTab === 'global') {
+            fetchFrankfurterRates();
+        }
+    }, [baseCurrency, activeTab]);
 
     useEffect(() => {
         const fetchLocalRates = async () => {
@@ -128,10 +132,10 @@ const CurrencyScreen: React.FC = () => {
     useEffect(() => {
         const hashParams = new URLSearchParams(location.hash.split('?')[1]);
         const sharedCity = hashParams.get('city');
-        if (isGuestFromShare && sharedCity && localRates && localRates[sharedCity]) {
+        if (isGuest && sharedCity && localRates && localRates[sharedCity]) {
             setSelectedCity(sharedCity);
         }
-    }, [isGuestFromShare, location, localRates]);
+    }, [isGuest, location, localRates]);
 
 
     const targetCurrencies = useMemo(() => {
@@ -141,24 +145,26 @@ const CurrencyScreen: React.FC = () => {
     const currentCityRates = localRates ? localRates[selectedCity] : null;
 
     const handleShare = () => {
-        if (!currentCityRates) return;
+        if (!currentCityRates || !localRates) return;
         
-        const cityName = localRates?.[selectedCity]?.name || '';
+        const cityName = localRates[selectedCity]?.name || '';
         const date = lastUpdated ? new Date(lastUpdated).toLocaleString('ar-EG', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'}) : '';
         
         const shareText = `
-أسعار الصرف في ${cityName}
-(${date})
-        
-📊 دولار أمريكي:
-- شراء: ${currentCityRates.USD_SYP.buy.toLocaleString()}
-- مبيع: ${currentCityRates.USD_SYP.sell.toLocaleString()}
+*أسعار العملات في سوريا* 🇸🇾
+*محافظة: ${cityName}*
+*آخر تحديث: ${date}*
 
-📊 ليرة تركية:
-- شراء: ${currentCityRates.TRY_SYP.buy.toLocaleString()}
-- مبيع: ${currentCityRates.TRY_SYP.sell.toLocaleString()}
+*📊 دولار أمريكي:*
+- شراء: *${currentCityRates.USD_SYP.buy.toLocaleString()}* ل.س
+- مبيع: *${currentCityRates.USD_SYP.sell.toLocaleString()}* ل.س
 
-عبر تطبيق سوق محافظة الرقة
+*📊 ليرة تركية:*
+- شراء: *${currentCityRates.TRY_SYP.buy.toLocaleString()}* ل.س
+- مبيع: *${currentCityRates.TRY_SYP.sell.toLocaleString()}* ل.س
+
+--
+*لمعرفة المزيد من الأسعار للعملات والذهب في جميع المحافظات، وتصفح أكبر سوق إلكتروني في الرقة، قم بزيارة تطبيقنا عبر الرابط:*
         `.trim();
         
         const shareUrl = `${window.location.origin}${window.location.pathname}#/rates?city=${selectedCity}`;
@@ -166,13 +172,11 @@ const CurrencyScreen: React.FC = () => {
         if (navigator.share) {
             navigator.share({
                 title: `أسعار العملات في ${cityName}`,
-                text: shareText,
-                url: shareUrl,
+                text: `${shareText}\n${shareUrl}`,
             }).catch(error => console.error('Error sharing:', error));
         } else {
-            // Fallback for browsers that don't support navigator.share
-            navigator.clipboard.writeText(shareText + `\n\nرابط: ${shareUrl}`);
-            alert('تم نسخ الأسعار إلى الحافظة. يمكنك الآن لصقها ومشاركتها.');
+            navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+            alert('تم نسخ الأسعار والرابط إلى الحافظة.');
         }
     };
 
@@ -186,12 +190,14 @@ const CurrencyScreen: React.FC = () => {
             <div className="space-y-4">
                  <div className="grid grid-cols-2 gap-4 items-end">
                     <div className="col-span-1">
-                        <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">اختر المدينة:</label>
-                        <Select value={selectedCity} onChange={e => setSelectedCity(e.target.value)}>
-                            {Object.keys(localRates).map(cityKey => (
-                                <option key={cityKey} value={cityKey}>{localRates[cityKey].name}</option>
-                            ))}
-                        </Select>
+                        <GuestLock>
+                            <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">اختر المدينة:</label>
+                            <Select value={selectedCity} onChange={e => setSelectedCity(e.target.value)} disabled={isGuest}>
+                                {Object.keys(localRates).map(cityKey => (
+                                    <option key={cityKey} value={cityKey}>{localRates[cityKey].name}</option>
+                                ))}
+                            </Select>
+                        </GuestLock>
                     </div>
                     <button onClick={handleShare} className="flex items-center justify-center gap-2 bg-red-600 text-white font-bold py-3 px-4 rounded-xl text-sm hover:bg-red-700 transition-colors disabled:opacity-50 h-fit" disabled={!currentCityRates} aria-label="مشاركة الأسعار">
                         <ShareIcon />
@@ -304,11 +310,20 @@ const CurrencyScreen: React.FC = () => {
                 <div className="max-w-2xl mx-auto">
                     <div className="bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 flex mb-6">
                         <TabButton active={activeTab === 'local'} onClick={() => setActiveTab('local')}>السوق المحلي</TabButton>
-                        <TabButton active={activeTab === 'global'} onClick={() => setActiveTab('global')}>أسعار عالمية</TabButton>
+                        <GuestLock>
+                            <div className="flex-1">
+                                <TabButton active={activeTab === 'global'} onClick={() => setActiveTab('global')}>أسعار عالمية</TabButton>
+                            </div>
+                        </GuestLock>
                     </div>
-
+                    
                     {activeTab === 'local' && renderLocalMarketSection()}
-                    {activeTab === 'global' && renderInternationalSection()}
+                    
+                    {activeTab === 'global' && (
+                        <GuestLock>
+                            {renderInternationalSection()}
+                        </GuestLock>
+                    )}
                 </div>
             </main>
         </div>

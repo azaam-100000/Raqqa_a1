@@ -16,6 +16,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  isGuestFromShare: boolean; // Add guest state
   signInWithPassword: (email: string, password: string) => Promise<any>;
   signUpWithPassword: (email: string, password: string, fullName: string, dateOfBirth: string) => Promise<any>;
   signInWithOAuth: (provider: Provider) => Promise<any>;
@@ -58,6 +59,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [authLoading, setAuthLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<PresenceState>({});
+  const [isGuestFromShare, setIsGuestFromShare] = useState(false);
 
   const checkProfileStatus = (profileToCheck: Profile): Profile | null => {
     if (profileToCheck.status === 'banned') {
@@ -114,8 +116,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // onAuthStateChange fires on load and on every auth event.
     // This is the source of truth for session and user state.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const currentUser = session?.user ?? null;
       setSession(session);
-      setUser(session?.user ?? null);
+      setUser(currentUser);
+
+      // Check for guest state on initial load if no user is found.
+      if ((_event === 'INITIAL_SESSION' || _event === 'SIGNED_OUT') && !currentUser) {
+        if (window.location.hash.startsWith('#/rates')) {
+          setIsGuestFromShare(true);
+        } else {
+          setIsGuestFromShare(false);
+        }
+      }
+      
+      // If a user signs in, they are no longer a guest.
+      if (_event === 'SIGNED_IN') {
+        setIsGuestFromShare(false);
+      }
+      
       setAuthLoading(false); // Auth state is now determined
     });
 
@@ -321,6 +339,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // The app is loading if we are waiting for the auth state OR
     // if we have a user but are still fetching their profile.
     loading: authLoading || (!!user && profileLoading),
+    isGuestFromShare,
     signInWithPassword,
     signUpWithPassword,
     signInWithOAuth,

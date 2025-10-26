@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth.ts';
 import Spinner from './ui/Spinner.tsx';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, isGuestFromShare } = useAuth();
 
   if (loading) {
     return (
@@ -14,7 +14,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     );
   }
 
-  if (!user) {
+  // Allow access if user is logged in OR if it's a guest coming from a share link
+  if (!user && !isGuestFromShare) {
     return <Navigate to="/login" replace />;
   }
 
