@@ -1,4 +1,5 @@
-const CACHE_NAME = 'raqqa-market-cache-v15'; // Bump version to force update
+const CACHE_NAME = 'raqqa-market-cache-v16'; // Bump version to force update
+const SUPABASE_HOST = 'oxysdlwfjcxypytlkcko.supabase.co';
 const APP_SHELL_URLS = [
   '/', // Cache the root URL
   '/index.html',
@@ -8,14 +9,13 @@ const APP_SHELL_URLS = [
 ];
 
 self.addEventListener('install', event => {
-  console.log('Service Worker: Install Event v15');
-  // Force the waiting service worker to become the active service worker.
+  console.log('Service Worker: Install Event v16');
   self.skipWaiting(); 
   
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Service Worker: Caching App Shell v15');
+        console.log('Service Worker: Caching App Shell v16');
         const requests = APP_SHELL_URLS.map(url => new Request(url, { cache: 'reload' }));
         return cache.addAll(requests);
       })
@@ -23,12 +23,11 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  console.log('Service Worker: Activate Event v15');
+  console.log('Service Worker: Activate Event v16');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
-          // A safer check to only delete caches from this app
           if (cacheName !== CACHE_NAME && cacheName.startsWith('raqqa-market-cache')) {
             console.log('Service Worker: Deleting old cache:', cacheName);
             return caches.delete(cacheName);
@@ -36,7 +35,7 @@ self.addEventListener('activate', event => {
         })
       );
     }).then(() => {
-      console.log('Service Worker: Claiming clients v15');
+      console.log('Service Worker: Claiming clients v16');
       return self.clients.claim();
     })
   );
@@ -46,15 +45,13 @@ self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // For API calls (different origin) or any non-GET requests, always go to network.
-  // By explicitly calling fetch(), we ensure the request is handled and doesn't hang.
-  if (url.origin !== self.origin || request.method !== 'GET') {
+  // Always go to network for API requests to Supabase.
+  if (url.hostname === SUPABASE_HOST) {
     event.respondWith(fetch(request));
     return;
   }
 
   // For navigation requests, use a network-first strategy with offline fallback.
-  // This ensures users get the latest version if online, but the app still loads offline.
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request).catch(() => {
@@ -67,14 +64,12 @@ self.addEventListener('fetch', event => {
   // For other assets (CSS, JS, images), use a "cache-first" strategy.
   event.respondWith(
     caches.match(request).then(cachedResponse => {
-      // If we have a cached response, return it.
       if (cachedResponse) {
         return cachedResponse;
       }
 
-      // If not, fetch from network, cache it, and return it.
       return fetch(request).then(networkResponse => {
-        if (networkResponse && networkResponse.status === 200) {
+        if (networkResponse && networkResponse.status === 200 && request.method === 'GET') {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then(cache => {
             cache.put(request, responseToCache);
