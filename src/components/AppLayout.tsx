@@ -1,9 +1,9 @@
 import React from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-// FIX: Removed .tsx extension from import path.
-import BottomNavBar from './BottomNavBar';
-// FIX: Removed .ts extension from import path.
-import { useAuth } from '../hooks/useAuth';
+// FIX: Added .tsx extension to import path as it is required by the module resolver.
+import BottomNavBar from './BottomNavBar.tsx';
+// FIX: Added .ts extension to import path as it is required by the module resolver.
+import { useAuth } from '../hooks/useAuth.ts';
 
 interface AppLayoutProps {
   installPrompt: Event | null;

@@ -1,6 +1,6 @@
 import React from 'react';
-// FIX: Removed the .tsx extension from the import path to resolve the module error.
-import Layout from '../components/Layout';
+// FIX: Added .tsx extension to import path as it seems to be required by the project configuration.
+import Layout from '../components/Layout.tsx';
 
 interface AuthLayoutProps {
   title: string;
