@@ -1,4 +1,5 @@
 import React from 'react';
+// FIX: Removed the .tsx extension from the import path as it was causing a module resolution error.
 import Layout from '../components/Layout';
 
 interface AuthLayoutProps {
@@ -17,7 +18,7 @@ const StoreIcon = () => (
 const AuthLayout: React.FC<AuthLayoutProps> = ({ title, description, children }) => {
   return (
     <Layout>
-      <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-2xl shadow-zinc-950 p-8 w-full">
+      <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl shadow-xl dark:shadow-2xl dark:shadow-teal-900/20 p-8 w-full">
         <div className="text-center mb-8">
             <div className="flex justify-center items-center mb-4">
                 <StoreIcon />

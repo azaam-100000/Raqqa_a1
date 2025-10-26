@@ -96,14 +96,6 @@ const CurrencyIcon = () => (
     </svg>
 );
 
-const DownloadIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-        <polyline points="7 10 12 15 17 10" />
-        <line x1="12" y1="15" x2="12" y2="3" />
-    </svg>
-);
-
 const RefreshIcon = ({ rotation }: { rotation: number }) => (
     <svg 
         xmlns="http://www.w3.org/2000/svg" 
@@ -141,8 +133,7 @@ const HomeScreen: React.FC = () => {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [feedFilter, setFeedFilter] = useState<FeedFilter>('all');
-  const [installPrompt, setInstallPrompt] = useState<Event | null>(null);
-
+  
 
   // Pull to refresh state
   const [pullStart, setPullStart] = useState<number | null>(null);
@@ -166,19 +157,6 @@ const HomeScreen: React.FC = () => {
     if (node) observer.current.observe(node);
   }, [loading, loadingMore, hasMore, isRefreshing]);
   
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e: Event) => {
-        e.preventDefault();
-        setInstallPrompt(e);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    return () => {
-        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
-  }, []);
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -410,19 +388,6 @@ const initializeFeed = useCallback((isRefreshing: boolean) => {
     signOut();
   };
   
-  const handleInstallClick = async () => {
-    if (!installPrompt) {
-        return;
-    }
-    const promptEvent = installPrompt as any;
-    promptEvent.prompt();
-    const { outcome } = await promptEvent.userChoice;
-    console.log(`User response to the install prompt: ${outcome}`);
-    setInstallPrompt(null);
-    setIsDropdownOpen(false);
-  };
-
-
   return (
     <div>
       <header className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-lg sticky top-0 z-10 border-b border-gray-200 dark:border-zinc-800">
@@ -470,12 +435,7 @@ const initializeFeed = useCallback((isRefreshing: boolean) => {
                             <CurrencyIcon />
                             <span>أسعار العملات</span>
                         </Link>
-                        {installPrompt && (
-                            <button onClick={handleInstallClick} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
-                                <DownloadIcon />
-                                <span>تثبيت التطبيق</span>
-                            </button>
-                        )}
+                        
                         <div className="my-1 h-px bg-gray-200 dark:bg-zinc-700"></div>
                         <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-500 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
                             <LogoutIcon />

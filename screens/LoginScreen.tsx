@@ -23,7 +23,7 @@ const LoginScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showResend, setShowResend] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
-  const { signInWithPassword, signInWithOAuth, user, resendConfirmationEmail } = useAuth();
+  const { signInWithPassword, user, resendConfirmationEmail } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -58,15 +58,8 @@ const LoginScreen: React.FC = () => {
     setLoading(false);
   };
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    setError(null);
-    const { error } = await signInWithOAuth('google');
-    if (error) {
-      setError(getErrorMessage(error));
-    }
-    // Supabase handles the redirect
-    setLoading(false);
+  const handleGoogleSignIn = () => {
+    navigate('/signup');
   }
 
   const handleResend = async () => {
@@ -116,7 +109,7 @@ const LoginScreen: React.FC = () => {
           </div>
         </div>
         <div className="space-y-4">
-            <Button onClick={handleGoogleSignIn} loading={loading} variant="google">
+            <Button onClick={handleGoogleSignIn} loading={false} variant="google">
                 <GoogleIcon />
                 <span>المتابعة باستخدام جوجل</span>
             </Button>

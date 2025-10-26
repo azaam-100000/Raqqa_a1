@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Spinner from '../components/ui/Spinner';
@@ -71,7 +72,7 @@ const CurrencyScreen: React.FC = () => {
     const [localLoading, setLocalLoading] = useState(true);
     const [localError, setLocalError] = useState<string | null>(null);
     
-    const [selectedCity, setSelectedCity] = useState<string>('Damascus');
+    const [selectedCity, setSelectedCity] = useState<string>('Raqqa');
     const navigate = useNavigate();
 
     useEffect(() => {

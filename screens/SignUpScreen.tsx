@@ -69,32 +69,52 @@ const SignUpScreen: React.FC = () => {
 
   return (
     <AuthLayout title="إنشاء حساب جديد" description="انضم إلينا اليوم! أدخل بياناتك لتبدأ.">
-      <form onSubmit={handleSignUp} className="space-y-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-            <Input type="text" placeholder="الاسم الأول" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
-            <Input type="text" placeholder="الاسم الأخير" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+      <form onSubmit={handleSignUp} className="space-y-6">
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+              <Input type="text" placeholder="الاسم الأول" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+              <Input type="text" placeholder="الاسم الأخير" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+          </div>
+          <div>
+              <label className="text-sm text-zinc-400 mb-2 block">تاريخ الميلاد</label>
+              <div className="flex gap-3">
+                  <Select value={day} onChange={e => setDay(e.target.value)} required>
+                      <option value="" disabled>اليوم</option>
+                      {days.map(d => <option key={d} value={d}>{d}</option>)}
+                  </Select>
+                  <Select value={month} onChange={e => setMonth(e.target.value)} required>
+                      <option value="" disabled>الشهر</option>
+                      {months.map(m => <option key={m} value={m}>{m}</option>)}
+                  </Select>
+                  <Select value={year} onChange={e => setYear(e.target.value)} required>
+                      <option value="" disabled>السنة</option>
+                      {years.map(y => <option key={y} value={y}>{y}</option>)}
+                  </Select>
+              </div>
+          </div>
         </div>
-         <div>
-            <label className="text-sm text-zinc-400 mb-2 block">تاريخ الميلاد</label>
-            <div className="flex gap-2">
-                <Select value={day} onChange={e => setDay(e.target.value)} required>
-                    <option value="" disabled>اليوم</option>
-                    {days.map(d => <option key={d} value={d}>{d}</option>)}
-                </Select>
-                <Select value={month} onChange={e => setMonth(e.target.value)} required>
-                    <option value="" disabled>الشهر</option>
-                    {months.map(m => <option key={m} value={m}>{m}</option>)}
-                </Select>
-                <Select value={year} onChange={e => setYear(e.target.value)} required>
-                    <option value="" disabled>السنة</option>
-                    {years.map(y => <option key={y} value={y}>{y}</option>)}
-                </Select>
-            </div>
+        
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-zinc-700/50"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="bg-zinc-900 px-3 text-zinc-500">معلومات الحساب</span>
+          </div>
         </div>
-        <Input type="email" placeholder="البريد الإلكتروني" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <Input type="password" placeholder="كلمة المرور" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
-        {error && <p className="text-red-400 text-sm text-center pt-2">{error}</p>}
-        <div className="pt-2">
+
+        <div className="space-y-4">
+            <Input type="email" placeholder="البريد الإلكتروني" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <Input type="password" placeholder="كلمة المرور (6 أحرف على الأقل)" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+        </div>
+
+        {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+        
+        <p className="text-xs text-center text-zinc-500 px-2 pt-2">
+            بالنقر على "إنشاء حساب"، فإنك توافق على <a href="#" className="underline hover:text-teal-400">شروط الخدمة</a> و<a href="#" className="underline hover:text-teal-400">سياسة الخصوصية</a> الخاصة بنا.
+        </p>
+
+        <div>
             <Button type="submit" loading={loading} variant="primary">إنشاء حساب</Button>
         </div>
       </form>
