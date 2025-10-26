@@ -1,4 +1,4 @@
-const CACHE_NAME = 'raqqa-market-cache-v16'; // Bump version to force update
+const CACHE_NAME = 'raqqa-market-cache-v17'; // Bump version to force update
 const SUPABASE_HOST = 'oxysdlwfjcxypytlkcko.supabase.co';
 const APP_SHELL_URLS = [
   '/', // Cache the root URL
@@ -9,13 +9,13 @@ const APP_SHELL_URLS = [
 ];
 
 self.addEventListener('install', event => {
-  console.log('Service Worker: Install Event v16');
+  console.log('Service Worker: Install Event v17');
   self.skipWaiting(); 
   
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Service Worker: Caching App Shell v16');
+        console.log('Service Worker: Caching App Shell v17');
         const requests = APP_SHELL_URLS.map(url => new Request(url, { cache: 'reload' }));
         return cache.addAll(requests);
       })
@@ -23,7 +23,7 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  console.log('Service Worker: Activate Event v16');
+  console.log('Service Worker: Activate Event v17');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
@@ -35,7 +35,7 @@ self.addEventListener('activate', event => {
         })
       );
     }).then(() => {
-      console.log('Service Worker: Claiming clients v16');
+      console.log('Service Worker: Claiming clients v17');
       return self.clients.claim();
     })
   );
@@ -45,9 +45,9 @@ self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Always go to network for API requests to Supabase.
+  // Always go to network for API requests to Supabase, and bypass the browser's HTTP cache.
   if (url.hostname === SUPABASE_HOST) {
-    event.respondWith(fetch(request));
+    event.respondWith(fetch(request, { cache: 'no-cache' }));
     return;
   }
 
