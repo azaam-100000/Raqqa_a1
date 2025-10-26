@@ -48,7 +48,7 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 // This is the public VAPID key corresponding to the private key in Supabase Edge Functions secrets.
-const VAPID_PUBLIC_KEY = 'BNo-zNSL13n6T88_T-4LajBw-5zJ8gLBlsWfPmm2Q53z-m7iFpdSCqM4zCqFb49z1qH5Mtl-7d2d3y-w1HkFpGc';
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BNo-zNSL13n6T88_T-4LajBw-5zJ8gLBlsWfPmm2Q53z-m7iFpdSCqM4zCqFb49z1qH5Mtl-7d2d3y-w1HkFpGc';
 
 const PROFILE_COLUMNS = 'id, full_name, avatar_url, bio, status, cover_photo_url, gender, place_of_origin, website, contact_info, education_level, gender_privacy, place_of_origin_privacy, website_privacy, contact_info_privacy, education_level_privacy, message_privacy, read_receipts_enabled, blocked_users, date_of_birth, date_of_birth_privacy';
 
@@ -203,44 +203,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!user) return;
 
     const setupPushNotifications = async () => {
-      if ('serviceWorker' in navigator && 'PushManager' in window) {
-        try {
-          const registration = await navigator.serviceWorker.ready;
-          
-          const permission = await Notification.requestPermission();
-          if (permission !== 'granted') {
-            console.log('Push notification permission not granted.');
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+      
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          console.log('Push notification permission not granted.');
+          return;
+        }
+
+        let subscription = await registration.pushManager.getSubscription();
+
+        if (!subscription) {
+          const vapidPublicKey = VAPID_PUBLIC_KEY;
+          if (!vapidPublicKey) {
+            console.error('VAPID_PUBLIC_KEY is missing.');
             return;
           }
-
-          let subscription = await registration.pushManager.getSubscription();
-
-          if (!subscription) {
-            subscription = await registration.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-            });
-          }
-          
-          const { error } = await supabase
-            .from('push_subscriptions')
-            .upsert(
-              {
-                endpoint: subscription.endpoint,
-                user_id: user.id,
-                subscription_details: subscription.toJSON(),
-              },
-              { onConflict: 'endpoint' }
-            );
-
-          if (error) {
-            console.error('Error saving push subscription:', error);
-          } else {
-            console.log('Push subscription saved successfully.');
-          }
-        } catch (err) {
-          console.error('Error setting up push notifications:', err);
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+          });
         }
+        
+        const { error } = await supabase
+          .from('push_subscriptions')
+          .upsert(
+            {
+              user_id: user.id,
+              subscription_data: subscription,
+            },
+            { onConflict: 'user_id' }
+          );
+
+        if (error) {
+          console.error('Error saving push subscription:', error);
+        } else {
+          console.log('Push subscription saved successfully.');
+        }
+      } catch (err) {
+        console.error('Error setting up push notifications:', err);
       }
     };
     

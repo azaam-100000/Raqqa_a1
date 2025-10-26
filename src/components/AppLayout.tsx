@@ -1,9 +1,9 @@
 import React from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-// FIX: Added .tsx extension to import path to fix module resolution error.
-import BottomNavBar from './BottomNavBar.tsx';
-// FIX: Added .ts extension to import path to fix module resolution error.
-import { useAuth } from '../hooks/useAuth.ts';
+// FIX: Removed .tsx extension from import path.
+import BottomNavBar from './BottomNavBar';
+// FIX: Removed .ts extension from import path.
+import { useAuth } from '../hooks/useAuth';
 
 interface AppLayoutProps {
   installPrompt: Event | null;
