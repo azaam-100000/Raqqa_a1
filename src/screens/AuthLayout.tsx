@@ -1,5 +1,5 @@
 import React from 'react';
-// FIX: Added .tsx extension to the import path to resolve the module.
+// FIX: Added .tsx extension to import path to fix module resolution error.
 import Layout from '../components/Layout.tsx';
 
 interface AuthLayoutProps {

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext.tsx';
@@ -5,7 +6,6 @@ import { useAuth } from './hooks/useAuth.ts';
 import ProtectedRoute from './components/ProtectedRoute.tsx';
 import IncomingCallModal from './components/IncomingCallModal.tsx';
 import { supabase } from './services/supabase.ts';
-import InstallPwaModal from './components/InstallPwaModal.tsx';
 
 
 // Screen Imports
@@ -67,24 +67,13 @@ const AppContent: React.FC = () => {
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
   const navigate = useNavigate();
   const [installPrompt, setInstallPrompt] = useState<Event | null>(null);
-  const [showInstallModal, setShowInstallModal] = useState(false);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
         // Prevent the mini-infobar from appearing on mobile
         e.preventDefault();
-        
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
-
-        // Only show the prompt if not in standalone mode and if it hasn't been shown this session
-        if (!isStandalone && !sessionStorage.getItem('install_prompt_shown')) {
-            setInstallPrompt(e);
-            // Show the modal after a small delay to not be too intrusive
-            setTimeout(() => setShowInstallModal(true), 3000); 
-            sessionStorage.setItem('install_prompt_shown', 'true');
-        } else if (!isStandalone) {
-             setInstallPrompt(e);
-        }
+        // Save the event so it can be triggered later.
+        setInstallPrompt(e);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -175,12 +164,6 @@ const AppContent: React.FC = () => {
             callType={incomingCall.callType}
             onAccept={handleAcceptCall}
             onDecline={handleDeclineCall}
-        />
-      )}
-      {showInstallModal && installPrompt && (
-        <InstallPwaModal
-            installPrompt={installPrompt}
-            onClose={() => setShowInstallModal(false)}
         />
       )}
       <Routes>
