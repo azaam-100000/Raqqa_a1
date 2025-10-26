@@ -17,7 +17,7 @@ const GuestLock: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
     return (
         <div className="relative flex-1">
-            <div className="blur-sm opacity-50 pointer-events-none">{children}</div>
+            <div className="blur-md opacity-40 pointer-events-none">{children}</div>
             <div 
                 className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 rounded-lg p-4 text-center cursor-pointer group backdrop-blur-sm"
                 onClick={() => navigate('/login')}

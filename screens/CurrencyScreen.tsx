@@ -146,27 +146,38 @@ const CurrencyScreen: React.FC = () => {
 
     const handleShare = () => {
         if (!currentCityRates || !localRates) return;
-        
+
         const cityName = localRates[selectedCity]?.name || '';
-        const date = lastUpdated ? new Date(lastUpdated).toLocaleString('ar-EG', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'}) : '';
-        
+        const date = lastUpdated ? new Date(lastUpdated) : new Date();
+        const formattedDate = date.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const formattedTime = date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+
         const shareText = `
-*أسعار العملات في سوريا* 🇸🇾
-*محافظة: ${cityName}*
-*آخر تحديث: ${date}*
+══════ ❁ ══════
+  *أسعار العملات والذهب*
+      *في سوريا* 🇸🇾
+══════ ❁ ══════
 
-*📊 دولار أمريكي:*
-- شراء: *${currentCityRates.USD_SYP.buy.toLocaleString()}* ل.س
-- مبيع: *${currentCityRates.USD_SYP.sell.toLocaleString()}* ل.س
+🏙️ *المحافظة:* ${cityName}
+📅 *التاريخ:* ${formattedDate}
+⏰ *الوقت:* ${formattedTime}
 
-*📊 ليرة تركية:*
-- شراء: *${currentCityRates.TRY_SYP.buy.toLocaleString()}* ل.س
-- مبيع: *${currentCityRates.TRY_SYP.sell.toLocaleString()}* ل.س
+-----------------------------------
 
---
-*لمعرفة المزيد من الأسعار للعملات والذهب في جميع المحافظات، وتصفح أكبر سوق إلكتروني في الرقة، قم بزيارة تطبيقنا عبر الرابط:*
+*🇺🇸 دولار أمريكي (USD)*
+شراء: *${currentCityRates.USD_SYP.buy.toLocaleString()}* ل.س
+مبيع: *${currentCityRates.USD_SYP.sell.toLocaleString()}* ل.س
+
+*🇹🇷 ليرة تركية (TRY)*
+شراء: *${currentCityRates.TRY_SYP.buy.toLocaleString()}* ل.س
+مبيع: *${currentCityRates.TRY_SYP.sell.toLocaleString()}* ل.س
+
+-----------------------------------
+
+📲 *تطبيق سوق محافظة الرقة*
+ اضغط على الرابط لمتابعة آخر الأسعار لجميع المحافظات، وتصفح أكبر سوق لكل شي جديد ومستعمل في الرقة!
         `.trim();
-        
+
         const shareUrl = `${window.location.origin}${window.location.pathname}#/rates?city=${selectedCity}`;
 
         if (navigator.share) {
