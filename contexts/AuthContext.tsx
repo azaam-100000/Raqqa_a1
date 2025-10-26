@@ -239,9 +239,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (!subscription) {
         const vapidPublicKey = VAPID_PUBLIC_KEY;
-        if (!vapidPublicKey) {
-          console.error('VAPID_PUBLIC_KEY is missing.');
-          throw new Error('VAPID public key is missing.');
+        if (!vapidPublicKey || vapidPublicKey === 'undefined') {
+          console.error('VAPID_PUBLIC_KEY is missing or invalid.');
+          throw new Error('VAPID public key is missing or invalid.');
         }
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,

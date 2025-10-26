@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth.ts';
 import Button from './ui/Button.tsx';
+import { getErrorMessage } from '../utils/errors.ts';
 
 const BellIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-teal-400">
@@ -33,9 +34,13 @@ const NotificationPrompt: React.FC = () => {
         setError(null);
         try {
             await setupPushNotifications();
-            setShowPrompt(false); // Hide on success
+            // If the function completes without throwing (success or user denied), hide the prompt.
+            setShowPrompt(false);
+            localStorage.setItem('notification_prompt_dismissed', 'true');
         } catch (err) {
-            setError("فشل تفعيل الإشعارات. يرجى المحاولة مرة أخرى من إعدادات المتصفح.");
+            const message = getErrorMessage(err);
+            setError(`فشل تفعيل الإشعارات: ${message}`);
+            // On error, we keep the prompt visible to show the message.
         } finally {
             setLoading(false);
         }
