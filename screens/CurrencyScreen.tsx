@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Spinner from '../components/ui/Spinner';
 import Select from '../components/ui/Select';
 import { supabase } from '../services/supabase';
+import { useAuth } from '../hooks/useAuth';
 
 interface Rates {
     [key: string]: number;
@@ -23,21 +25,40 @@ interface LocalMarketRates {
     };
 }
 
-const currencyNames: { [key: string]: string } = {
-    USD: 'دولار أمريكي',
-    EUR: 'يورو',
-    TRY: 'ليرة تركية',
-    AED: 'درهم إماراتي',
-    SAR: 'ريال سعودي',
-    CAD: 'دولار كندي',
-    JPY: 'ين ياباني',
-    GBP: 'جنيه استرليني',
-    AUD: 'دولار أسترالي',
+const currencyInfo: { [key: string]: { name: string; icon: string; bgColor: string } } = {
+    USD: { name: 'دولار أمريكي', icon: '🇺🇸', bgColor: 'bg-green-500' },
+    EUR: { name: 'يورو', icon: '🇪🇺', bgColor: 'bg-blue-500' },
+    TRY: { name: 'ليرة تركية', icon: '🇹🇷', bgColor: 'bg-red-500' },
+    AED: { name: 'درهم إماراتي', icon: '🇦🇪', bgColor: 'bg-gray-500' },
+    SAR: { name: 'ريال سعودي', icon: '🇸🇦', bgColor: 'bg-green-600' },
+    CAD: { name: 'دولار كندي', icon: '🇨🇦', bgColor: 'bg-red-600' },
+    JPY: { name: 'ين ياباني', icon: '🇯🇵', bgColor: 'bg-red-400' },
+    GBP: { name: 'جنيه استرليني', icon: '🇬🇧', bgColor: 'bg-blue-600' },
+    AUD: { name: 'دولار أسترالي', icon: '🇦🇺', bgColor: 'bg-blue-700' },
+    SYP: { name: 'ليرة سورية', icon: '🇸🇾', bgColor: 'bg-gray-400' },
 };
 
 const BackIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg> );
+const ShareIcon = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg> );
+
+const TabButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
+    <button
+        onClick={onClick}
+        className={`flex-1 py-3 text-sm font-bold transition-colors ${
+            active
+                ? 'text-teal-400 border-b-2 border-teal-400'
+                : 'text-gray-500 dark:text-zinc-400 border-b-2 border-transparent hover:text-teal-400/70'
+        }`}
+    >
+        {children}
+    </button>
+);
 
 const CurrencyScreen: React.FC = () => {
+    const [activeTab, setActiveTab] = useState<'local' | 'global'>('local');
+    const { isGuestFromShare } = useAuth();
+    const location = useLocation();
+
     const [frankfurterRates, setFrankfurterRates] = useState<FrankfurterResponse | null>(null);
     const [baseCurrency, setBaseCurrency] = useState('USD');
     const [frankfurterLoading, setFrankfurterLoading] = useState(true);
@@ -103,51 +124,124 @@ const CurrencyScreen: React.FC = () => {
         };
         fetchLocalRates();
     }, []);
+    
+    useEffect(() => {
+        const hashParams = new URLSearchParams(location.hash.split('?')[1]);
+        const sharedCity = hashParams.get('city');
+        if (isGuestFromShare && sharedCity && localRates && localRates[sharedCity]) {
+            setSelectedCity(sharedCity);
+        }
+    }, [isGuestFromShare, location, localRates]);
+
 
     const targetCurrencies = useMemo(() => {
-        return Object.keys(currencyNames).filter(c => c !== baseCurrency);
+        return Object.keys(currencyInfo).filter(c => c !== baseCurrency && c !== 'SYP');
     }, [baseCurrency]);
 
     const currentCityRates = localRates ? localRates[selectedCity] : null;
 
+    const handleShare = () => {
+        if (!currentCityRates) return;
+        
+        const cityName = localRates?.[selectedCity]?.name || '';
+        const date = lastUpdated ? new Date(lastUpdated).toLocaleString('ar-EG', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'}) : '';
+        
+        const shareText = `
+أسعار الصرف في ${cityName}
+(${date})
+        
+📊 دولار أمريكي:
+- شراء: ${currentCityRates.USD_SYP.buy.toLocaleString()}
+- مبيع: ${currentCityRates.USD_SYP.sell.toLocaleString()}
+
+📊 ليرة تركية:
+- شراء: ${currentCityRates.TRY_SYP.buy.toLocaleString()}
+- مبيع: ${currentCityRates.TRY_SYP.sell.toLocaleString()}
+
+عبر تطبيق سوق محافظة الرقة
+        `.trim();
+        
+        const shareUrl = `${window.location.origin}${window.location.pathname}#/rates?city=${selectedCity}`;
+
+        if (navigator.share) {
+            navigator.share({
+                title: `أسعار العملات في ${cityName}`,
+                text: shareText,
+                url: shareUrl,
+            }).catch(error => console.error('Error sharing:', error));
+        } else {
+            // Fallback for browsers that don't support navigator.share
+            navigator.clipboard.writeText(shareText + `\n\nرابط: ${shareUrl}`);
+            alert('تم نسخ الأسعار إلى الحافظة. يمكنك الآن لصقها ومشاركتها.');
+        }
+    };
+
+
     const renderLocalMarketSection = () => {
-        if (localLoading) return <div className="text-center py-10"><Spinner /></div>;
-        if (localError) return <p className="text-center text-red-400 py-10">{localError}</p>;
+        if (localLoading) return <div className="text-center py-20"><Spinner /></div>;
+        if (localError) return <div className="p-4 bg-red-500/10 text-red-400 rounded-lg text-center">{localError}</div>;
         if (!localRates || !currentCityRates) return null;
 
         return (
-            <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-4 mb-6">
-                <h3 className="text-lg font-bold text-teal-500 dark:text-teal-400 mb-3">أسعار السوق المحلية</h3>
-                {lastUpdated && (
-                    <p className="text-xs text-gray-500 dark:text-zinc-500 mb-3 text-center">
+            <div className="space-y-4">
+                 <div className="grid grid-cols-2 gap-4 items-end">
+                    <div className="col-span-1">
+                        <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">اختر المدينة:</label>
+                        <Select value={selectedCity} onChange={e => setSelectedCity(e.target.value)}>
+                            {Object.keys(localRates).map(cityKey => (
+                                <option key={cityKey} value={cityKey}>{localRates[cityKey].name}</option>
+                            ))}
+                        </Select>
+                    </div>
+                    <button onClick={handleShare} className="flex items-center justify-center gap-2 bg-red-600 text-white font-bold py-3 px-4 rounded-xl text-sm hover:bg-red-700 transition-colors disabled:opacity-50 h-fit" disabled={!currentCityRates} aria-label="مشاركة الأسعار">
+                        <ShareIcon />
+                        <span>مشاركة</span>
+                    </button>
+                </div>
+                 {lastUpdated && (
+                    <p className="text-xs text-gray-500 dark:text-zinc-500 text-center">
                         آخر تحديث: {new Date(lastUpdated).toLocaleString('ar-EG', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </p>
                 )}
-                <div className="mb-4">
-                    <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">اختر المدينة:</label>
-                    <Select value={selectedCity} onChange={e => setSelectedCity(e.target.value)}>
-                        {Object.keys(localRates).map(cityKey => (
-                            <option key={cityKey} value={cityKey}>{localRates[cityKey].name}</option>
-                        ))}
-                    </Select>
-                </div>
-                <div className="space-y-3">
-                    <div className="flex justify-between items-center bg-gray-100 dark:bg-zinc-800/50 p-3 rounded-md">
-                        <div>
-                            <p className="font-bold text-gray-900 dark:text-white">دولار أمريكي / ليرة سورية</p>
+                
+                {/* USD Card */}
+                <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                        <div className="flex -space-x-2">
+                           <span className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${currencyInfo.USD.bgColor}`}>{currencyInfo.USD.icon}</span>
+                           <span className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${currencyInfo.SYP.bgColor}`}>{currencyInfo.SYP.icon}</span>
                         </div>
-                        <div className="text-left">
-                            <p className="font-mono"><span className="text-xs text-gray-500 dark:text-zinc-400">شراء: </span>{currentCityRates.USD_SYP.buy.toLocaleString()}</p>
-                            <p className="font-mono"><span className="text-xs text-gray-500 dark:text-zinc-400">مبيع: </span>{currentCityRates.USD_SYP.sell.toLocaleString()}</p>
+                        <h4 className="font-bold text-gray-900 dark:text-white">دولار أمريكي / ليرة سورية</h4>
+                    </div>
+                    <div className="flex justify-around text-center">
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-zinc-400">شراء</p>
+                            <p className="font-mono text-lg font-bold text-green-500">{currentCityRates.USD_SYP.buy.toLocaleString()}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-zinc-400">مبيع</p>
+                            <p className="font-mono text-lg font-bold text-red-500">{currentCityRates.USD_SYP.sell.toLocaleString()}</p>
                         </div>
                     </div>
-                    <div className="flex justify-between items-center bg-gray-100 dark:bg-zinc-800/50 p-3 rounded-md">
-                        <div>
-                            <p className="font-bold text-gray-900 dark:text-white">ليرة تركية / ليرة سورية</p>
+                </div>
+
+                 {/* TRY Card */}
+                <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                        <div className="flex -space-x-2">
+                           <span className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${currencyInfo.TRY.bgColor}`}>{currencyInfo.TRY.icon}</span>
+                           <span className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${currencyInfo.SYP.bgColor}`}>{currencyInfo.SYP.icon}</span>
                         </div>
-                         <div className="text-left">
-                            <p className="font-mono"><span className="text-xs text-gray-500 dark:text-zinc-400">شراء: </span>{currentCityRates.TRY_SYP.buy.toLocaleString()}</p>
-                            <p className="font-mono"><span className="text-xs text-gray-500 dark:text-zinc-400">مبيع: </span>{currentCityRates.TRY_SYP.sell.toLocaleString()}</p>
+                        <h4 className="font-bold text-gray-900 dark:text-white">ليرة تركية / ليرة سورية</h4>
+                    </div>
+                     <div className="flex justify-around text-center">
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-zinc-400">شراء</p>
+                            <p className="font-mono text-lg font-bold text-green-500">{currentCityRates.TRY_SYP.buy.toLocaleString()}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500 dark:text-zinc-400">مبيع</p>
+                            <p className="font-mono text-lg font-bold text-red-500">{currentCityRates.TRY_SYP.sell.toLocaleString()}</p>
                         </div>
                     </div>
                 </div>
@@ -156,34 +250,36 @@ const CurrencyScreen: React.FC = () => {
     };
 
     const renderInternationalSection = () => {
-        if (frankfurterLoading) return <div className="text-center py-10"><Spinner /></div>;
-        if (frankfurterError) return <p className="text-center text-red-400 py-10">{frankfurterError}</p>;
+        if (frankfurterLoading) return <div className="text-center py-20"><Spinner /></div>;
+        if (frankfurterError) return <div className="p-4 bg-red-500/10 text-red-400 rounded-lg text-center">{frankfurterError}</div>;
         
         return (
-            <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-4">
-                <h3 className="text-lg font-bold text-teal-500 dark:text-teal-400 mb-3">الأسعار العالمية</h3>
+            <div className="space-y-4">
                 <div className="mb-4">
                     <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">العملة الأساسية:</label>
                     <Select value={baseCurrency} onChange={e => setBaseCurrency(e.target.value)}>
-                        {Object.keys(currencyNames).map(code => (
-                            <option key={code} value={code}>{currencyNames[code]} ({code})</option>
+                        {Object.keys(currencyInfo).filter(c => c !== 'SYP').map(code => (
+                            <option key={code} value={code}>{currencyInfo[code].name} ({code})</option>
                         ))}
                     </Select>
                 </div>
                  {frankfurterRates && (
-                    <p className="text-sm text-gray-500 dark:text-zinc-400 mb-4 text-center">
+                    <p className="text-xs text-gray-500 dark:text-zinc-400 text-center">
                         آخر تحديث: {new Date(frankfurterRates.date).toLocaleDateString('ar-EG')}
                     </p>
                 )}
                 <div className="space-y-2">
                     {frankfurterRates && targetCurrencies.map(currency => (
                         frankfurterRates.rates[currency] && (
-                            <div key={currency} className="flex justify-between items-center bg-gray-100 dark:bg-zinc-800/50 p-3 rounded-md">
-                                <div>
-                                    <p className="font-bold text-gray-900 dark:text-white">{currencyNames[currency]}</p>
-                                    <p className="text-sm text-gray-500 dark:text-zinc-400">{baseCurrency} / {currency}</p>
+                            <div key={currency} className="flex justify-between items-center bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 p-3 rounded-lg">
+                                <div className="flex items-center gap-3">
+                                   <span className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${currencyInfo[currency]?.bgColor || 'bg-gray-400'}`}>{currencyInfo[currency]?.icon}</span>
+                                    <div>
+                                        <p className="font-bold text-gray-900 dark:text-white">{currencyInfo[currency]?.name}</p>
+                                        <p className="text-xs text-gray-500 dark:text-zinc-400">{baseCurrency} / {currency}</p>
+                                    </div>
                                 </div>
-                                <p className="font-mono text-lg">{frankfurterRates.rates[currency]?.toFixed(4)}</p>
+                                <p className="font-mono text-lg font-semibold">{frankfurterRates.rates[currency]?.toFixed(4)}</p>
                             </div>
                         )
                     ))}
@@ -206,8 +302,13 @@ const CurrencyScreen: React.FC = () => {
             </header>
             <main className="container mx-auto px-4 py-6">
                 <div className="max-w-2xl mx-auto">
-                    {renderLocalMarketSection()}
-                    {renderInternationalSection()}
+                    <div className="bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 flex mb-6">
+                        <TabButton active={activeTab === 'local'} onClick={() => setActiveTab('local')}>السوق المحلي</TabButton>
+                        <TabButton active={activeTab === 'global'} onClick={() => setActiveTab('global')}>أسعار عالمية</TabButton>
+                    </div>
+
+                    {activeTab === 'local' && renderLocalMarketSection()}
+                    {activeTab === 'global' && renderInternationalSection()}
                 </div>
             </main>
         </div>

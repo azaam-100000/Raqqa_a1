@@ -1,5 +1,5 @@
 import React from 'react';
-import Layout from '../components/Layout.tsx';
+import Layout from '../components/Layout';
 
 interface AuthLayoutProps {
   title: string;
