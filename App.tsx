@@ -3,8 +3,6 @@ import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-d
 import { AuthProvider } from './contexts/AuthContext.tsx';
 import { useAuth } from './hooks/useAuth.ts';
 import ProtectedRoute from './components/ProtectedRoute.tsx';
-import PermissionsWizard from './components/PermissionsWizard.tsx';
-import ProfileCompletionWizard from './components/ProfileCompletionWizard.tsx';
 import IncomingCallModal from './components/IncomingCallModal.tsx';
 import { supabase } from './services/supabase.ts';
 import InstallPwaModal from './components/InstallPwaModal.tsx';
@@ -65,9 +63,7 @@ interface IncomingCall {
 }
 
 const AppContent: React.FC = () => {
-  const [showPermissionsWizard, setShowPermissionsWizard] = useState(false);
-  const [showProfileWizard, setShowProfileWizard] = useState(false);
-  const { profile, loading, user } = useAuth();
+  const { profile, user } = useAuth();
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
   const navigate = useNavigate();
   const [installPrompt, setInstallPrompt] = useState<Event | null>(null);
@@ -97,28 +93,6 @@ const AppContent: React.FC = () => {
         window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
   }, []);
-
-  useEffect(() => {
-    const permissionsRequested = localStorage.getItem('permissions_requested');
-    if (!permissionsRequested) {
-      setTimeout(() => setShowPermissionsWizard(true), 500);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (profile && !loading) {
-        const isComplete = profile.avatar_url && profile.cover_photo_url && profile.bio && profile.bio.trim() !== '';
-        const lastSkipped = localStorage.getItem('profile_wizard_skipped_at');
-        const oneDay = 24 * 60 * 60 * 1000;
-
-        if (!isComplete && (!lastSkipped || (Date.now() - parseInt(lastSkipped, 10)) > oneDay)) {
-            setTimeout(() => {
-              if (!localStorage.getItem('permissions_requested')) return; // Don't show if permission wizard is still up
-              setShowProfileWizard(true)
-            }, 2000); // Delay to avoid immediate popup on login
-        }
-    }
-  }, [profile, loading]);
 
   // Global call listener
   useEffect(() => {
@@ -154,17 +128,6 @@ const AppContent: React.FC = () => {
         supabase.removeChannel(channel);
     };
   }, [user, incomingCall]);
-
-
-  const handlePermissionsFinish = () => {
-    localStorage.setItem('permissions_requested', 'true');
-    setShowPermissionsWizard(false);
-  };
-
-  const handleProfileWizardFinish = () => {
-    localStorage.setItem('profile_wizard_skipped_at', Date.now().toString());
-    setShowProfileWizard(false);
-  };
   
   const handleAcceptCall = () => {
     if (!incomingCall || !user) return;
@@ -206,8 +169,6 @@ const AppContent: React.FC = () => {
 
   return (
     <>
-      {showPermissionsWizard && <PermissionsWizard onFinish={handlePermissionsFinish} />}
-      {showProfileWizard && <ProfileCompletionWizard onFinish={handleProfileWizardFinish} />}
       {incomingCall && (
         <IncomingCallModal 
             caller={incomingCall.caller}
