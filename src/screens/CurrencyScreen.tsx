@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import Spinner from '../components/ui/Spinner';
-import Select from '../components/ui/Select';
-import { supabase } from '../services/supabase';
-import { useAuth } from '../hooks/useAuth';
-import GuestLock from '../components/GuestLock';
+import Spinner from '../components/ui/Spinner.tsx';
+import Select from '../components/ui/Select.tsx';
+import { supabase } from '../services/supabase.ts';
+import { useAuth } from '../hooks/useAuth.ts';
+import GuestLock from '../components/GuestLock.tsx';
 
 interface Rates {
     [key: string]: number;
@@ -120,7 +120,6 @@ const CurrencyScreen: React.FC = () => {
                     setLastUpdated(latestUpdate.toISOString());
                     
                     // If currently selected city is not in the data, default to the first one available
-                    // We check inside the effect to ensure we have the latest data
                     if (!formattedRates[selectedCity] && Object.keys(formattedRates).length > 0) {
                          setSelectedCity(Object.keys(formattedRates)[0]);
                     }
@@ -136,7 +135,7 @@ const CurrencyScreen: React.FC = () => {
             }
         };
         fetchLocalRates();
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);
     
     useEffect(() => {
         const hashParams = new URLSearchParams(location.hash.split('?')[1]);
@@ -164,6 +163,8 @@ const CurrencyScreen: React.FC = () => {
         const formattedDate = date.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         const formattedTime = date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 
+        const shareUrl = `https://raqqa-a1.vercel.app/#/rates?city=${selectedCity}`;
+
         const shareText = `
 ══════ ❁ ══════
   *أسعار العملات والذهب*
@@ -190,7 +191,6 @@ const CurrencyScreen: React.FC = () => {
  اضغط على الرابط لمتابعة آخر الأسعار لجميع المحافظات، وتصفح أكبر سوق لكل شي جديد ومستعمل في الرقة!
         `.trim();
 
-        const shareUrl = `${window.location.origin}${window.location.pathname}#/rates?city=${selectedCity}`;
 
         if (navigator.share) {
             navigator.share({

@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Post } from '../types';
-import { supabase } from '../services/supabase';
-import Avatar from './ui/Avatar';
-import { useAuth } from '../hooks/useAuth';
-import { playLikeSound, triggerHapticFeedback, timeAgo } from '../utils/errors';
+import { Post } from '../types.ts';
+import { supabase } from '../services/supabase.ts';
+import Avatar from './ui/Avatar.tsx';
+import { useAuth } from '../hooks/useAuth.ts';
+import { playLikeSound, triggerHapticFeedback, timeAgo } from '../utils/errors.ts';
 
 // Icons
 const HeartIcon = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="currentColor" stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>;
