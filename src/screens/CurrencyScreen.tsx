@@ -218,12 +218,14 @@ const CurrencyScreen: React.FC = () => {
             <div className="space-y-4">
                  <div className="grid grid-cols-2 gap-4 items-end">
                     <div className="col-span-1">
-                        <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">اختر المدينة:</label>
-                        <Select value={selectedCity} onChange={e => setSelectedCity(e.target.value)}>
-                            {Object.keys(localRates).map(cityKey => (
-                                <option key={cityKey} value={cityKey}>{localRates[cityKey].name}</option>
-                            ))}
-                        </Select>
+                        <GuestLock>
+                            <label className="block text-sm text-gray-500 dark:text-zinc-400 mb-2">اختر المدينة:</label>
+                            <Select value={selectedCity} onChange={e => setSelectedCity(e.target.value)} disabled={isGuest}>
+                                {Object.keys(localRates).map(cityKey => (
+                                    <option key={cityKey} value={cityKey}>{localRates[cityKey].name}</option>
+                                ))}
+                            </Select>
+                        </GuestLock>
                     </div>
                     <button onClick={handleShare} className="flex items-center justify-center gap-2 bg-red-600 text-white font-bold py-3 px-4 rounded-xl text-sm hover:bg-red-700 transition-colors disabled:opacity-50 h-fit" disabled={!currentCityRates} aria-label="مشاركة الأسعار">
                         <ShareIcon />

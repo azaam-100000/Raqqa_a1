@@ -6,6 +6,7 @@ import { useAuth } from './hooks/useAuth.ts';
 import ProtectedRoute from './components/ProtectedRoute.tsx';
 import IncomingCallModal from './components/IncomingCallModal.tsx';
 import LoginRequiredModal from './components/LoginRequiredModal.tsx';
+import ProfileCompletionWizard from './components/ProfileCompletionWizard.tsx';
 import { supabase } from './services/supabase.ts';
 
 
@@ -66,6 +67,7 @@ interface IncomingCall {
 const AppContent: React.FC = () => {
   const { profile, user } = useAuth();
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
+  const [showProfileWizard, setShowProfileWizard] = useState(true);
   const navigate = useNavigate();
   const [installPrompt, setInstallPrompt] = useState<Event | null>(null);
 
@@ -168,6 +170,9 @@ const AppContent: React.FC = () => {
         />
       )}
       <LoginRequiredModal />
+      {user && showProfileWizard && (
+        <ProfileCompletionWizard onFinish={() => setShowProfileWizard(false)} />
+      )}
       <Routes>
         {/* Public routes - Auth */}
         <Route path="/login" element={<LoginScreen />} />
