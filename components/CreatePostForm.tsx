@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { supabase } from '../services/supabase';
@@ -68,7 +69,7 @@ const CreatePostForm: React.FC<CreatePostFormProps> = ({ groupId, onPostCreated,
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState(false);
-  const { user } = useAuth();
+  const { user, requireAuth } = useAuth();
   
   const [showCamera, setShowCamera] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -96,6 +97,12 @@ const CreatePostForm: React.FC<CreatePostFormProps> = ({ groupId, onPostCreated,
     };
   }, [videoPreview]);
   
+  const handleInteraction = () => {
+      requireAuth(() => {
+          setIsFocused(true);
+      });
+  };
+
  const startCamera = async () => {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -251,7 +258,11 @@ const CreatePostForm: React.FC<CreatePostFormProps> = ({ groupId, onPostCreated,
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!content.trim() && !imageFile && !videoFile) || !user) return;
+    if (!user) {
+        requireAuth(() => {});
+        return;
+    }
+    if ((!content.trim() && !imageFile && !videoFile)) return;
 
     setLoading(true);
     setError(null);
@@ -381,7 +392,7 @@ const CreatePostForm: React.FC<CreatePostFormProps> = ({ groupId, onPostCreated,
             placeholder={groupId ? 'اكتب شيئًا لهذه المجموعة...' : `بماذا تفكر يا ${firstName}؟`}
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            onFocus={() => setIsFocused(true)}
+            onFocus={handleInteraction}
             disabled={loading}
             className="!bg-gray-100 dark:!bg-zinc-800 !border-gray-200 dark:!border-zinc-700 rounded-xl py-2 px-4 transition-all duration-300 ease-in-out"
           />
@@ -449,7 +460,7 @@ const CreatePostForm: React.FC<CreatePostFormProps> = ({ groupId, onPostCreated,
                 <div className="flex items-center gap-1 text-gray-600 dark:text-zinc-300">
                     <button
                         type="button"
-                        onClick={() => imageFileInputRef.current?.click()}
+                        onClick={() => { requireAuth(() => imageFileInputRef.current?.click()) }}
                         disabled={loading || !!videoFile}
                         className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         title="إضافة صورة"
@@ -466,7 +477,7 @@ const CreatePostForm: React.FC<CreatePostFormProps> = ({ groupId, onPostCreated,
                     />
                      <button
                         type="button"
-                        onClick={() => videoFileInputRef.current?.click()}
+                        onClick={() => { requireAuth(() => videoFileInputRef.current?.click()) }}
                         disabled={loading || !!imageFile}
                         className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         title="إضافة فيديو"
@@ -484,8 +495,10 @@ const CreatePostForm: React.FC<CreatePostFormProps> = ({ groupId, onPostCreated,
                     <button
                         type="button"
                         onClick={() => {
-                            removeMedia();
-                            setShowCamera(true);
+                            requireAuth(() => {
+                                removeMedia();
+                                setShowCamera(true);
+                            });
                         }}
                         disabled={loading}
                         className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
@@ -496,7 +509,11 @@ const CreatePostForm: React.FC<CreatePostFormProps> = ({ groupId, onPostCreated,
                     </button>
                     <button
                         type="button"
-                        onClick={() => { setShowAiPrompt(prev => !prev); setAiError(null); }}
+                        onClick={() => { 
+                            requireAuth(() => {
+                                setShowAiPrompt(prev => !prev); setAiError(null); 
+                            });
+                        }}
                         disabled={loading}
                         className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
                         title="إنشاء محتوى بالذكاء الاصطناعي"

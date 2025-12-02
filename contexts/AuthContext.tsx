@@ -17,6 +17,9 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   isGuestFromShare: boolean; // Add guest state
+  loginModalOpen: boolean;
+  setLoginModalOpen: (open: boolean) => void;
+  requireAuth: (callback: () => void) => void;
   signInWithPassword: (email: string, password: string) => Promise<any>;
   signUpWithPassword: (email: string, password: string, fullName: string, dateOfBirth: string) => Promise<any>;
   signInWithOAuth: (provider: Provider) => Promise<any>;
@@ -61,6 +64,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [profileLoading, setProfileLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<PresenceState>({});
   const [isGuestFromShare, setIsGuestFromShare] = useState(false);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
 
   const checkProfileStatus = (profileToCheck: Profile): Profile | null => {
     if (profileToCheck.status === 'banned') {
@@ -133,6 +137,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // If a user signs in, they are no longer a guest.
       if (_event === 'SIGNED_IN') {
         setIsGuestFromShare(false);
+        setLoginModalOpen(false); // Close modal on sign in
       }
       
       setAuthLoading(false); // Auth state is now determined
@@ -334,6 +339,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const requireAuth = (callback: () => void) => {
+    if (user) {
+        callback();
+    } else {
+        setLoginModalOpen(true);
+    }
+  };
+
 
   const value = {
     session,
@@ -343,6 +356,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // if we have a user but are still fetching their profile.
     loading: authLoading || (!!user && profileLoading),
     isGuestFromShare,
+    loginModalOpen,
+    setLoginModalOpen,
+    requireAuth,
     signInWithPassword,
     signUpWithPassword,
     signInWithOAuth,

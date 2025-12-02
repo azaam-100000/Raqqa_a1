@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Group } from '../types';
@@ -15,7 +16,7 @@ interface GroupCardProps {
 }
 
 const GroupCard: React.FC<GroupCardProps> = ({ group, isMember, onGroupJoined }) => {
-  const { user } = useAuth();
+  const { user, requireAuth } = useAuth();
   const navigate = useNavigate();
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
   const [joinLoading, setJoinLoading] = useState(false);
@@ -33,17 +34,20 @@ const GroupCard: React.FC<GroupCardProps> = ({ group, isMember, onGroupJoined })
   const handleJoin = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!user) return navigate('/login');
     
-    setJoinLoading(true);
-    const { error } = await supabase.from('group_members').insert({ group_id: group.id, user_id: user.id });
-    if (error) {
-        alert('فشل الانضمام إلى المجموعة.');
-        console.error(error);
-    } else {
-        onGroupJoined(group.id);
-    }
-    setJoinLoading(false);
+    requireAuth(async () => {
+        if (!user) return;
+        
+        setJoinLoading(true);
+        const { error } = await supabase.from('group_members').insert({ group_id: group.id, user_id: user.id });
+        if (error) {
+            alert('فشل الانضمام إلى المجموعة.');
+            console.error(error);
+        } else {
+            onGroupJoined(group.id);
+        }
+        setJoinLoading(false);
+    });
   };
 
   const canJoin = !isMember && !group.is_private;

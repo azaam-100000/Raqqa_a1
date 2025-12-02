@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
 import Avatar from './ui/Avatar';
@@ -22,7 +23,7 @@ interface ProductPostCardProps {
 }
 
 const ProductPostCard: React.FC<ProductPostCardProps> = ({ product, onProductDeleted, onProductUpdated }) => {
-    const { user } = useAuth();
+    const { user, requireAuth } = useAuth();
     const [isLiked, setIsLiked] = useState(false);
     const [likeCount, setLikeCount] = useState(product.product_likes.length);
     const [productImageUrl, setProductImageUrl] = useState<string | null>(null);
@@ -43,30 +44,33 @@ const ProductPostCard: React.FC<ProductPostCardProps> = ({ product, onProductDel
     
     const handleLikeToggle = async (e: React.MouseEvent) => {
         e.preventDefault(); e.stopPropagation();
-        if (!user) return alert('يجب عليك تسجيل الدخول أولاً.');
-
-        playLikeSound();
-        triggerHapticFeedback();
         
-        const currentlyLiked = isLiked;
-        setIsLiked(!currentlyLiked);
-        setLikeCount(prev => currentlyLiked ? prev - 1 : prev + 1);
+        requireAuth(async () => {
+            if (!user) return; 
 
-        if (currentlyLiked) {
-            const { error } = await supabase.from('product_likes').delete().match({ product_id: product.id, user_id: user.id });
-            if (error) {
-                console.error('Error unliking product:', error);
-                setIsLiked(true); setLikeCount(prev => prev + 1);
+            playLikeSound();
+            triggerHapticFeedback();
+            
+            const currentlyLiked = isLiked;
+            setIsLiked(!currentlyLiked);
+            setLikeCount(prev => currentlyLiked ? prev - 1 : prev + 1);
+
+            if (currentlyLiked) {
+                const { error } = await supabase.from('product_likes').delete().match({ product_id: product.id, user_id: user.id });
+                if (error) {
+                    console.error('Error unliking product:', error);
+                    setIsLiked(true); setLikeCount(prev => prev + 1);
+                }
+            } else {
+                const { error } = await supabase.from('product_likes').insert({ product_id: product.id, user_id: user.id });
+                if (error) {
+                    console.error('Error liking product:', error);
+                    setIsLiked(false); setLikeCount(prev => prev - 1);
+                } else if (user.id !== product.user_id) {
+                    await supabase.from('notifications').insert({ user_id: product.user_id, actor_id: user.id, type: 'like_product', entity_id: product.id });
+                }
             }
-        } else {
-            const { error } = await supabase.from('product_likes').insert({ product_id: product.id, user_id: user.id });
-            if (error) {
-                console.error('Error liking product:', error);
-                setIsLiked(false); setLikeCount(prev => prev - 1);
-            } else if (user.id !== product.user_id) {
-                await supabase.from('notifications').insert({ user_id: product.user_id, actor_id: user.id, type: 'like_product', entity_id: product.id });
-            }
-        }
+        });
     };
     
     const handleShare = async (e: React.MouseEvent) => {

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Store } from '../types';
@@ -12,7 +13,7 @@ const StorePlaceholderIcon = () => (
 );
 
 const StoreCard: React.FC<{ store: Store }> = ({ store }) => {
-  const { user } = useAuth();
+  const { user, requireAuth } = useAuth();
   const navigate = useNavigate();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   
@@ -41,28 +42,31 @@ const StoreCard: React.FC<{ store: Store }> = ({ store }) => {
   const handleFollowToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!user) return navigate('/login');
     
-    setActionLoading(true);
-    if (isFollowing) {
-        const { error } = await supabase.from('store_followers').delete().match({ store_id: store.id, user_id: user.id });
-        if (!error) { setIsFollowing(false); setFollowersCount(c => c - 1); }
-    } else {
-        const { error } = await supabase.from('store_followers').insert({ store_id: store.id, user_id: user.id });
-        if (!error) {
-            setIsFollowing(true);
-            setFollowersCount(c => c + 1);
-            if (user.id !== store.user_id) {
-                await supabase.from('notifications').insert({
-                    user_id: store.user_id,
-                    actor_id: user.id,
-                    type: 'new_store_follower',
-                    entity_id: store.id,
-                });
+    requireAuth(async () => {
+        if (!user) return; // Should be handled by requireAuth
+        
+        setActionLoading(true);
+        if (isFollowing) {
+            const { error } = await supabase.from('store_followers').delete().match({ store_id: store.id, user_id: user.id });
+            if (!error) { setIsFollowing(false); setFollowersCount(c => c - 1); }
+        } else {
+            const { error } = await supabase.from('store_followers').insert({ store_id: store.id, user_id: user.id });
+            if (!error) {
+                setIsFollowing(true);
+                setFollowersCount(c => c + 1);
+                if (user.id !== store.user_id) {
+                    await supabase.from('notifications').insert({
+                        user_id: store.user_id,
+                        actor_id: user.id,
+                        type: 'new_store_follower',
+                        entity_id: store.id,
+                    });
+                }
             }
         }
-    }
-    setActionLoading(false);
+        setActionLoading(false);
+    });
   };
 
   const ratings = store.store_ratings || [];

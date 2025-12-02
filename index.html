@@ -56,10 +56,9 @@
       }
     </script>
     <script>
-      // On page load, if there's no hash, redirect to the login page route.
-      // This helps HashRouter apps on initial load and with PWA start_url.
+      // On page load, if there's no hash, redirect to the home page route (instead of login).
       if (window.location.pathname === '/' && !window.location.hash) {
-        window.location.hash = '#/login';
+        window.location.hash = '#/home';
       }
     </script>
   <script type="importmap">

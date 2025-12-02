@@ -1,9 +1,8 @@
 import React from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-// FIX: Added .tsx extension to import path to resolve module error.
-import BottomNavBar from './BottomNavBar.tsx';
-import { useAuth } from '../hooks/useAuth.ts';
-import NotificationPrompt from './NotificationPrompt.tsx';
+import BottomNavBar from './BottomNavBar';
+import { useAuth } from '../hooks/useAuth';
+import NotificationPrompt from './NotificationPrompt';
 
 interface AppLayoutProps {
   installPrompt: Event | null;
@@ -12,7 +11,6 @@ interface AppLayoutProps {
 const AppLayout: React.FC<AppLayoutProps> = ({ installPrompt }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  // FIX: Added .ts extension to import path to resolve module error.
   const { user, isGuestFromShare } = useAuth();
   const isGuest = isGuestFromShare && !user;
 

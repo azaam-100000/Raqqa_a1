@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, useOutletContext } from 'react-router-dom';
+import { Link, useOutletContext, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.ts';
 import { supabase } from '../services/supabase.ts';
 import { Post, Product, RentalPost } from '../types.ts';
@@ -77,6 +78,12 @@ const LogoutIcon = () => (
     </svg>
 );
 
+const LoginIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
+    </svg>
+);
+
 const ProfileIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
 );
@@ -122,7 +129,8 @@ const TabButton = ({ label, active, onClick }: { label: string; active: boolean;
 
 
 const HomeScreen: React.FC = () => {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, requireAuth } = useAuth();
+  const navigate = useNavigate();
   const [pinnedPost, setPinnedPost] = useState<FeedItem | null>(null);
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -228,7 +236,7 @@ const HomeScreen: React.FC = () => {
                 .eq('is_pinned', true)
                 .maybeSingle();
             
-            if (pinnedError) throw pinnedError;
+            // Ignore pinned error for guests if it's permission related, or handle gracefully
             if (pinnedPostData) {
                 setPinnedPost({ ...pinnedPostData, item_type: 'post' });
             } else {
@@ -295,7 +303,7 @@ const HomeScreen: React.FC = () => {
 
 
 const initializeFeed = useCallback((isRefreshing: boolean) => {
-    if (!user) return Promise.resolve();
+    // Note: removed (!user) check to allow guests
     if (isRefreshing) setIsRefreshing(true);
     else setLoading(true);
 
@@ -306,13 +314,11 @@ const initializeFeed = useCallback((isRefreshing: boolean) => {
     setHasMore(true);
     return fetchPageData(0, isRefreshing);
 
-}, [user, fetchPageData]);
+}, [fetchPageData]);
 
   useEffect(() => {
-    if (user) {
-        initializeFeed(false);
-    }
-  }, [initializeFeed, user, feedFilter]);
+    initializeFeed(false);
+  }, [initializeFeed, feedFilter]); // Removed user dependency to allow fetch for guests
 
   useEffect(() => {
     if (page > 0) {
@@ -402,6 +408,13 @@ const initializeFeed = useCallback((isRefreshing: boolean) => {
     promptEvent.prompt();
     // The prompt can only be used once.
   };
+  
+  const handleProtectedNavigation = (path: string) => {
+      setIsDropdownOpen(false);
+      requireAuth(() => {
+          navigate(path);
+      });
+  };
 
   const showInstallButton = installPrompt && !isStandalone;
   
@@ -426,47 +439,57 @@ const initializeFeed = useCallback((isRefreshing: boolean) => {
                 <Link to="/search" className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800" title="بحث">
                     <SearchIcon />
                 </Link>
-                <Link to="/messages" className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800" title="الرسائل">
+                <button onClick={() => handleProtectedNavigation('/messages')} className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800" title="الرسائل">
                   <MessengerIcon />
-                </Link>
-                <Link to="/notifications" className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800" title="الإشعارات">
+                </button>
+                <button onClick={() => handleProtectedNavigation('/notifications')} className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800" title="الإشعارات">
                   <NotificationsIcon />
                   {unreadCount > 0 && <span className="absolute top-1 right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">{unreadCount > 9 ? '9+' : unreadCount}</span>}
-                </Link>
+                </button>
                 <div className="relative" ref={dropdownRef}>
                 <button onClick={() => setIsDropdownOpen(p => !p)}>
                     <Avatar url={profile?.avatar_url} size={36} userId={user?.id} showStatus={true} />
                 </button>
                 {isDropdownOpen && (
                     <div className="absolute left-0 mt-2 w-56 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-lg z-20 py-1">
-                        <div className="px-4 py-2 border-b border-gray-200 dark:border-zinc-700">
-                            <p className="font-bold text-gray-900 dark:text-zinc-100 truncate">{profile?.full_name}</p>
-                            <p className="text-xs text-gray-500 dark:text-zinc-400 truncate">{user?.email}</p>
-                        </div>
-                        <Link to="/profile" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors w-full">
-                            <ProfileIcon />
-                            <span>الملف الشخصي</span>
-                        </Link>
-                        {isAdmin && (
-                            <Link to="/admin" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors w-full">
-                                <AdminIcon />
-                                <span>لوحة تحكم المسؤول</span>
-                            </Link>
+                        {user ? (
+                            <>
+                                <div className="px-4 py-2 border-b border-gray-200 dark:border-zinc-700">
+                                    <p className="font-bold text-gray-900 dark:text-zinc-100 truncate">{profile?.full_name}</p>
+                                    <p className="text-xs text-gray-500 dark:text-zinc-400 truncate">{user?.email}</p>
+                                </div>
+                                <Link to="/profile" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors w-full">
+                                    <ProfileIcon />
+                                    <span>الملف الشخصي</span>
+                                </Link>
+                                {isAdmin && (
+                                    <Link to="/admin" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors w-full">
+                                        <AdminIcon />
+                                        <span>لوحة تحكم المسؤول</span>
+                                    </Link>
+                                )}
+                                <Link to="/settings" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors w-full">
+                                    <SettingsIcon />
+                                    <span>الإعدادات</span>
+                                </Link>
+                                <div className="my-1 h-px bg-gray-200 dark:bg-zinc-700"></div>
+                                <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-500 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
+                                    <LogoutIcon />
+                                    <span>تسجيل الخروج</span>
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                 <button onClick={() => { setIsDropdownOpen(false); navigate('/login'); }} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-teal-500 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
+                                    <LoginIcon />
+                                    <span>تسجيل الدخول</span>
+                                </button>
+                                 <Link to="/settings/display" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors w-full">
+                                    <SettingsIcon />
+                                    <span>المظهر</span>
+                                </Link>
+                            </>
                         )}
-                        <Link to="/settings" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors w-full">
-                            <SettingsIcon />
-                            <span>الإعدادات</span>
-                        </Link>
-                        <Link to="/rates" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors w-full">
-                            <CurrencyIcon />
-                            <span>أسعار العملات</span>
-                        </Link>
-                        
-                        <div className="my-1 h-px bg-gray-200 dark:bg-zinc-700"></div>
-                        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-500 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors">
-                            <LogoutIcon />
-                            <span>تسجيل الخروج</span>
-                        </button>
                     </div>
                 )}
                 </div>

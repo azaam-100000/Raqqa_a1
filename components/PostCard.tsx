@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Post } from '../types';
 import Avatar from './ui/Avatar';
@@ -81,7 +82,7 @@ interface PostCardProps {
 }
 
 const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted, onPostUpdated, onPinStatusChanged }) => {
-    const { user } = useAuth();
+    const { user, requireAuth } = useAuth();
     const [isLiked, setIsLiked] = useState(false);
     const [likeCount, setLikeCount] = useState(post.likes.length);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -183,44 +184,43 @@ const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted, onPostUpdated,
     }, [postVideoUrl]);
     
     const handleLikeToggle = async () => {
-        if (!user) {
-            alert('يجب عليك تسجيل الدخول أولاً لتتمكن من الإعجاب بالمنشورات.');
-            return;
-        }
+        requireAuth(async () => {
+            if (!user) return; // Should not happen due to requireAuth, but for type safety
 
-        playLikeSound();
-        triggerHapticFeedback();
+            playLikeSound();
+            triggerHapticFeedback();
 
-        const currentlyLiked = isLiked;
-        setIsLiked(!currentlyLiked);
+            const currentlyLiked = isLiked;
+            setIsLiked(!currentlyLiked);
 
-        if (currentlyLiked) {
-            setLikeCount(prev => prev - 1);
-            const { error } = await supabase.from('likes').delete().match({ post_id: post.id, user_id: user.id });
-            if (error) {
-                console.error('Error unliking post:', error);
-                setIsLiked(true); // Revert UI on error
-                setLikeCount(prev => prev + 1);
-            }
-        } else {
-            setLikeCount(prev => prev + 1);
-            const { error } = await supabase.from('likes').insert({ post_id: post.id, user_id: user.id });
-            if (error) {
-                console.error('Error liking post:', error);
-                setIsLiked(false); // Revert UI on error
+            if (currentlyLiked) {
                 setLikeCount(prev => prev - 1);
+                const { error } = await supabase.from('likes').delete().match({ post_id: post.id, user_id: user.id });
+                if (error) {
+                    console.error('Error unliking post:', error);
+                    setIsLiked(true); // Revert UI on error
+                    setLikeCount(prev => prev + 1);
+                }
             } else {
-                 // Send notification if not liking own post
-                if (user.id !== post.user_id) {
-                    await supabase.from('notifications').insert({
-                        user_id: post.user_id, // Recipient
-                        actor_id: user.id,     // Sender
-                        type: 'like_post',
-                        entity_id: post.id,
-                    });
+                setLikeCount(prev => prev + 1);
+                const { error } = await supabase.from('likes').insert({ post_id: post.id, user_id: user.id });
+                if (error) {
+                    console.error('Error liking post:', error);
+                    setIsLiked(false); // Revert UI on error
+                    setLikeCount(prev => prev - 1);
+                } else {
+                     // Send notification if not liking own post
+                    if (user.id !== post.user_id) {
+                        await supabase.from('notifications').insert({
+                            user_id: post.user_id, // Recipient
+                            actor_id: user.id,     // Sender
+                            type: 'like_post',
+                            entity_id: post.id,
+                        });
+                    }
                 }
             }
-        }
+        });
     };
 
     const handleDelete = async () => {
@@ -363,7 +363,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted, onPostUpdated,
                         </p>
                     </div>
                 </div>
-                {!isEditing && (
+                {!isEditing && (isOwner || isAdmin) && (
                     <div className="relative" ref={menuRef}>
                         <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 text-gray-500 dark:text-zinc-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full">
                             <MoreIcon />
@@ -386,10 +386,25 @@ const PostCard: React.FC<PostCardProps> = ({ post, onPostDeleted, onPostUpdated,
                                         </button>
                                     </>
                                 )}
-                                {!isOwner && <button onClick={() => { setIsReporting(true); setIsMenuOpen(false); }} className="flex items-center gap-3 w-full text-right px-4 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700">
+                            </div>
+                        )}
+                    </div>
+                )}
+                 {!isOwner && !isAdmin && (
+                    <div className="relative" ref={menuRef}>
+                        <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 text-gray-500 dark:text-zinc-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full">
+                            <MoreIcon />
+                        </button>
+                        {isMenuOpen && (
+                            <div className="absolute left-0 mt-2 w-48 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl shadow-lg z-10 py-1">
+                                <button onClick={() => { 
+                                        requireAuth(() => {
+                                            setIsReporting(true); setIsMenuOpen(false); 
+                                        });
+                                    }} className="flex items-center gap-3 w-full text-right px-4 py-2 text-sm text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700">
                                     <FlagIcon />
                                     <span>الإبلاغ عن المنشور</span>
-                                </button>}
+                                </button>
                             </div>
                         )}
                     </div>

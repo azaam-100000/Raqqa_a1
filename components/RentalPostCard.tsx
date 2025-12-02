@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { RentalPost } from '../types';
@@ -29,7 +30,7 @@ interface RentalPostCardProps {
 }
 
 const RentalPostCard: React.FC<RentalPostCardProps> = ({ post, onPostDeleted }) => {
-    const { user } = useAuth();
+    const { user, requireAuth } = useAuth();
     const navigate = useNavigate();
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [isLiked, setIsLiked] = useState(false);
@@ -79,29 +80,32 @@ const RentalPostCard: React.FC<RentalPostCardProps> = ({ post, onPostDeleted }) 
 
     const handleLikeToggle = async (e: React.MouseEvent) => {
         e.stopPropagation(); e.preventDefault();
-        if (!user) return alert('يجب عليك تسجيل الدخول أولاً.');
         
-        playLikeSound();
-        triggerHapticFeedback();
+        requireAuth(async () => {
+            if (!user) return; 
+            
+            playLikeSound();
+            triggerHapticFeedback();
 
-        const currentlyLiked = isLiked;
-        setIsLiked(!currentlyLiked);
-        setLikeCount(prev => currentlyLiked ? prev - 1 : prev + 1);
+            const currentlyLiked = isLiked;
+            setIsLiked(!currentlyLiked);
+            setLikeCount(prev => currentlyLiked ? prev - 1 : prev + 1);
 
-        try {
-            if (currentlyLiked) {
-                await supabase.from('rental_post_likes').delete().match({ post_id: post.id, user_id: user.id });
-            } else {
-                await supabase.from('rental_post_likes').insert({ post_id: post.id, user_id: user.id });
-                if (user.id !== post.user_id) {
-                    await supabase.from('notifications').insert({ user_id: post.user_id, actor_id: user.id, type: 'like_rental_post', entity_id: post.id });
+            try {
+                if (currentlyLiked) {
+                    await supabase.from('rental_post_likes').delete().match({ post_id: post.id, user_id: user.id });
+                } else {
+                    await supabase.from('rental_post_likes').insert({ post_id: post.id, user_id: user.id });
+                    if (user.id !== post.user_id) {
+                        await supabase.from('notifications').insert({ user_id: post.user_id, actor_id: user.id, type: 'like_rental_post', entity_id: post.id });
+                    }
                 }
+            } catch (error) {
+                console.error('Failed to toggle like:', error);
+                setIsLiked(currentlyLiked);
+                setLikeCount(prev => currentlyLiked ? prev + 1 : prev - 1);
             }
-        } catch (error) {
-            console.error('Failed to toggle like:', error);
-            setIsLiked(currentlyLiked);
-            setLikeCount(prev => currentlyLiked ? prev + 1 : prev - 1);
-        }
+        });
     };
     
     const handleDelete = async (e: React.MouseEvent) => {

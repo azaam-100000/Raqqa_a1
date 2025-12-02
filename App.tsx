@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext.tsx';
 import { useAuth } from './hooks/useAuth.ts';
 import ProtectedRoute from './components/ProtectedRoute.tsx';
 import IncomingCallModal from './components/IncomingCallModal.tsx';
+import LoginRequiredModal from './components/LoginRequiredModal.tsx';
 import { supabase } from './services/supabase.ts';
 
 
@@ -166,14 +167,15 @@ const AppContent: React.FC = () => {
             onDecline={handleDeclineCall}
         />
       )}
+      <LoginRequiredModal />
       <Routes>
-        {/* Public routes */}
+        {/* Public routes - Auth */}
         <Route path="/login" element={<LoginScreen />} />
         <Route path="/signup" element={<SignUpScreen />} />
         <Route path="/verify" element={<VerificationScreen />} />
 
-        {/* Protected routes */}
-        <Route path="/" element={<ProtectedRoute><AppLayout installPrompt={installPrompt} /></ProtectedRoute>}>
+        {/* Public Routes with Main Layout (Guests allowed) */}
+        <Route path="/" element={<AppLayout installPrompt={installPrompt} />}>
           <Route index element={<Navigate to="/home" replace />} />
           <Route path="/home" element={<HomeScreen />} />
           <Route path="/stores" element={<StoresScreen />} />
@@ -182,37 +184,23 @@ const AppContent: React.FC = () => {
           <Route path="/rentals" element={<HouseRentalsScreen />} />
           <Route path="/watch" element={<WatchScreen />} />
           <Route path="/watch/:postId" element={<WatchScreen />} />
+          <Route path="/post/:postId" element={<PostDetailScreen />} />
+          <Route path="/user/:userId" element={<UserScreen />} />
+          <Route path="/user/:userId/:followType" element={<FollowersScreen />} />
+          <Route path="/store/:storeId" element={<StoreDetailScreen />} />
+          <Route path="/product/:productId" element={<ProductDetailScreen />} />
+          <Route path="/group/:groupId" element={<GroupDetailScreen />} />
+          <Route path="/group/:groupId/members" element={<GroupMembersScreen />} />
+          <Route path="/rental/:rentalId" element={<RentalDetailScreen />} />
+          <Route path="/rates" element={<CurrencyScreen />} />
+          <Route path="/suggestions" element={<SuggestionsScreen />} />
         </Route>
+
+        {/* Protected routes - Require Login */}
         
-        <Route path="/post/:postId" element={<ProtectedRoute><PostDetailScreen /></ProtectedRoute>} />
+        {/* Profile & Settings */}
         <Route path="/profile" element={<ProtectedRoute><ProfileScreen /></ProtectedRoute>} />
         <Route path="/profile/edit" element={<ProtectedRoute><EditProfileScreen /></ProtectedRoute>} />
-        <Route path="/user/:userId" element={<ProtectedRoute><UserScreen /></ProtectedRoute>} />
-        <Route path="/user/:userId/:followType" element={<ProtectedRoute><FollowersScreen /></ProtectedRoute>} />
-        
-        <Route path="/stores/new" element={<ProtectedRoute><CreateStoreScreen /></ProtectedRoute>} />
-        <Route path="/store/:storeId" element={<ProtectedRoute><StoreDetailScreen /></ProtectedRoute>} />
-        <Route path="/store/:storeId/products/new" element={<ProtectedRoute><CreateProductScreen /></ProtectedRoute>} />
-        <Route path="/product/:productId" element={<ProtectedRoute><ProductDetailScreen /></ProtectedRoute>} />
-        
-        <Route path="/messages" element={<ProtectedRoute><MessagesScreen /></ProtectedRoute>} />
-        <Route path="/chat/:userId" element={<ProtectedRoute><ChatScreen /></ProtectedRoute>} />
-        
-        <Route path="/groups/new" element={<ProtectedRoute><CreateGroupScreen /></ProtectedRoute>} />
-        <Route path="/group/:groupId" element={<ProtectedRoute><GroupDetailScreen /></ProtectedRoute>} />
-        <Route path="/group/:groupId/members" element={<ProtectedRoute><GroupMembersScreen /></ProtectedRoute>} />
-        
-        <Route path="/notifications" element={<ProtectedRoute><NotificationsScreen /></ProtectedRoute>} />
-        <Route path="/call/:callType/:userId" element={<ProtectedRoute><CallScreen /></ProtectedRoute>} />
-        <Route path="/suggestions" element={<ProtectedRoute><SuggestionsScreen /></ProtectedRoute>} />
-        <Route path="/live-conversation" element={<ProtectedRoute><LiveConversationScreen /></ProtectedRoute>} />
-        <Route path="/rates" element={<ProtectedRoute><CurrencyScreen /></ProtectedRoute>} />
-        
-        <Route path="/rentals/new" element={<ProtectedRoute><CreateRentalScreen /></ProtectedRoute>} />
-        <Route path="/rental/:rentalId" element={<ProtectedRoute><RentalDetailScreen /></ProtectedRoute>} />
-        <Route path="/rental/:rentalId/edit" element={<ProtectedRoute><EditRentalScreen /></ProtectedRoute>} />
-
-        {/* Settings */}
         <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
         <Route path="/settings/display" element={<ProtectedRoute><DisplaySettingsScreen /></ProtectedRoute>} />
         <Route path="/settings/chat" element={<ProtectedRoute><ChatSettingsScreen /></ProtectedRoute>} />
@@ -220,7 +208,21 @@ const AppContent: React.FC = () => {
         <Route path="/activity-log" element={<ProtectedRoute><ActivityLogScreen /></ProtectedRoute>} />
         <Route path="/help-support" element={<ProtectedRoute><HelpAndSupportScreen /></ProtectedRoute>} />
         <Route path="/support/ticket/:ticketId" element={<ProtectedRoute><SupportTicketDetailScreen /></ProtectedRoute>} />
-        
+
+        {/* Creation & Editing */}
+        <Route path="/stores/new" element={<ProtectedRoute><CreateStoreScreen /></ProtectedRoute>} />
+        <Route path="/store/:storeId/products/new" element={<ProtectedRoute><CreateProductScreen /></ProtectedRoute>} />
+        <Route path="/groups/new" element={<ProtectedRoute><CreateGroupScreen /></ProtectedRoute>} />
+        <Route path="/rentals/new" element={<ProtectedRoute><CreateRentalScreen /></ProtectedRoute>} />
+        <Route path="/rental/:rentalId/edit" element={<ProtectedRoute><EditRentalScreen /></ProtectedRoute>} />
+
+        {/* Communication */}
+        <Route path="/messages" element={<ProtectedRoute><MessagesScreen /></ProtectedRoute>} />
+        <Route path="/chat/:userId" element={<ProtectedRoute><ChatScreen /></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><NotificationsScreen /></ProtectedRoute>} />
+        <Route path="/call/:callType/:userId" element={<ProtectedRoute><CallScreen /></ProtectedRoute>} />
+        <Route path="/live-conversation" element={<ProtectedRoute><LiveConversationScreen /></ProtectedRoute>} />
+
         {/* Admin Routes */}
         <Route path="/admin" element={<ProtectedRoute><AdminDashboardScreen /></ProtectedRoute>} />
         <Route path="/admin/user/:userId" element={<ProtectedRoute><AdminUserDetailScreen /></ProtectedRoute>} />
